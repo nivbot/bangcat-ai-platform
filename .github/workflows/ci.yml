@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -50,32 +53,36 @@ jobs:
       INTERNAL_SERVICE_TOKEN: ci-test-token
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Upload generated dependency lock
-        uses: actions/upload-artifact@v4
-        with:
-          name: npm-lockfile
-          path: package-lock.json
-          if-no-files-found: error
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Commit dependency lock when first generated
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
+            git config user.name "bangcat-ci"
+            git config user.email "actions@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: lock production dependencies"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+      - name: Repository policy
+        run: npm run policy:check
       - name: Validate AI Prisma schema
         run: npx prisma validate --schema prisma/ai/schema.prisma
       - name: Validate source Prisma schema
         run: npx prisma validate --schema prisma/source/schema.prisma
       - name: Typecheck
-        run: |
-          set -o pipefail
-          npm run typecheck 2>&1 | tee typecheck.log
-      - name: Upload typecheck diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: typecheck-diagnostics
-          path: typecheck.log
-          if-no-files-found: ignore
+        run: npm run typecheck
       - name: Unit tests
         run: npm test
       - name: Production build
