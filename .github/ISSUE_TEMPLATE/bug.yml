@@ -1,0 +1,50 @@
+name: Bug / Regression
+about: Report reproducible incorrect behavior
+labels: []
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: What happened? Include exact error and affected environment.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible sequence, payload or job ID.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, request ID, job ID, screenshots, CI run or database state. Remove secrets and personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and severity
+      description: Users, data, tenants, jobs, cost and operational impact.
+    validations:
+      required: true
+  - type: textarea
+    id: suspected
+    attributes:
+      label: Suspected area and recent changes
+    validations:
+      required: false
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Immediate mitigation or rollback
+    validations:
+      required: false
