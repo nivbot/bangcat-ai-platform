@@ -1,0 +1,64 @@
+name: Feature / Product Work
+about: Define a user-facing capability with acceptance criteria
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: Read AGENTS.md and PROJECT_STATUS.md before creating this work item.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and user value
+      description: What problem are we solving, for whom, and why now?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected outcome
+      description: Describe observable user or business behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List included capabilities.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State what this task must not expand into.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use testable checklist items.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data, privacy and permission impact
+      description: Databases, fields, tenant boundaries, personal data and access changes.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and risks
+      description: Other issues, providers, infrastructure, decisions and failure modes.
+    validations:
+      required: true
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Deployment and rollback expectation
+      description: How should this be released, verified and reversed?
+    validations:
+      required: true
