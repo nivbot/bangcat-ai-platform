@@ -53,10 +53,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install --no-audit --no-fund
-      - run: npx prisma validate --schema prisma/ai/schema.prisma
-      - run: npx prisma validate --schema prisma/source/schema.prisma
-      - run: npm run check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate AI Prisma schema
+        run: npx prisma validate --schema prisma/ai/schema.prisma
+      - name: Validate source Prisma schema
+        run: npx prisma validate --schema prisma/source/schema.prisma
+      - name: Typecheck
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee typecheck.log
+      - name: Upload typecheck diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-diagnostics
+          path: typecheck.log
+          if-no-files-found: ignore
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
 
   migration-safety:
     runs-on: ubuntu-latest
