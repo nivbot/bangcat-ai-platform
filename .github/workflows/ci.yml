@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: catnote_ai_test
+          MYSQL_USER: bangcat_ai_test
+          MYSQL_PASSWORD: test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      AI_DATABASE_URL: mysql://bangcat_ai_test:test-password@127.0.0.1:3306/catnote_ai_test
+      AI_DB_HOST: 127.0.0.1
+      AI_DB_PORT: 3306
+      AI_DB_USER: bangcat_ai_test
+      AI_DB_PASSWORD: test-password
+      AI_DB_NAME: catnote_ai_test
+      SOURCE_DB_HOST: 127.0.0.1
+      SOURCE_DB_PORT: 3306
+      SOURCE_DB_USER: bangcat_ai_test
+      SOURCE_DB_PASSWORD: test-password
+      SOURCE_DB_NAME: catnote_ai_test
+      SOURCE_DB_REQUIRED: "false"
+      REDIS_URL: redis://127.0.0.1:6379/0
+      INTERNAL_SERVICE_TOKEN: ci-test-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: npm run prisma:migrate:deploy
+      - run: npm run check
