@@ -2,7 +2,7 @@
 
 - 最后更新：2026-07-22
 - 主干：`main`
-- 当前阶段：生产架构基础完成，准备进入旧平台安全接入与 Topic Engine T1
+- 当前阶段：生产架构与项目操作系统完成，准备进入旧平台安全接入
 - 项目负责人：产品与架构总负责人（与用户共同决策）
 
 ## 已完成
@@ -26,7 +26,16 @@
 - 腾讯云 COS Storage Adapter；
 - OpenTelemetry 接入入口；
 - Docker Compose 与 GitHub Actions；
-- CI 已通过 Prisma、TypeScript、Vitest 和生产构建验证。
+- `package-lock.json` 已提交，CI 和 Docker 使用 `npm ci`；
+- CI 已覆盖仓库政策、Prisma、TypeScript、Vitest 和生产构建。
+
+### 项目操作系统
+
+- 建立 Agent 合作契约、贡献规范和安全政策；
+- 建立 Project Lead、Delivery、Review、Verification、Release 角色；
+- 建立 Issue、PR、Handoff 和 Review 模板；
+- 建立项目状态、路线图、发布门禁和仓库卫生检查；
+- 清除旧 SQLite、原生 HTTP 和重复 `node:test` 实现。
 
 ### 数据安全边界
 
@@ -37,12 +46,6 @@
 - 小程序和浏览器不直接访问 AI 服务。
 
 ## 当前未完成
-
-### P0：生产可重复构建
-
-- 提交并审查 `package-lock.json`；
-- CI 和 Docker 改用 `npm ci`；
-- 确认依赖漏洞扫描和升级策略。
 
 ### P0：旧平台安全接入 M2
 
@@ -58,6 +61,12 @@
 - 审查 SQL；
 - 在空库和 `catnote_ai_test` 升级场景验证；
 - 建立备份、回滚和数据校验流程。
+
+### P0：依赖与供应链安全
+
+- 建立定期依赖漏洞检查；
+- 约定自动升级和人工评审范围；
+- 禁止未经解释的新生产依赖。
 
 ### P1：Topic Engine T1
 
@@ -77,10 +86,10 @@
 
 ## 下一决策点
 
-在开始 T1 模型开发前，先完成以下三项：
+在开始 T1 模型开发前，先完成：
 
-1. 可重复构建与依赖锁；
-2. 旧平台只读接入；
-3. AI 数据库第一份可回滚 Migration。
+1. 旧平台只读接入；
+2. AI 数据库第一份可回滚 Migration；
+3. 依赖漏洞检查和升级策略。
 
-只有这三项通过验收，才进入模型调用和自动分析开发。
+以上基础通过验收后，再进入模型调用和自动分析开发。
