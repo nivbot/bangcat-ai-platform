@@ -106,6 +106,10 @@ POST      /v1/topic/candidates/:id/status
 
 候选评分请求中的 12 个信号均使用 `0—1` 数值。评分结果保存总分、逐项贡献、风险扣分、硬阻断原因和评分版本。
 
+## 验证状态
+
+新增的 T0 持久化与 HTTP 鉴权流程已在 Node.js 22 隔离环境运行 4 个测试，结果为 4 passed、0 failed。当前执行环境无法解析 `github.com`，因此尚未从远端重新克隆并执行完整分支测试；仓库暂未配置 GitHub Actions。
+
 ## 文档
 
 - [产品需求文档](docs/PRD.md)
