@@ -1,0 +1,49 @@
+[
+  {
+    "id": "cat-pocket-001",
+    "name": "裤兜",
+    "sex": "公猫",
+    "approximateAgeMonths": 18,
+    "breed": "中华田园猫",
+    "coatColor": "狸花白",
+    "adoptionStatus": "待领养",
+    "description": "有点胆小，但熟悉后会主动靠近人。",
+    "rescueStory": "在街边被发现后进入猫站。救助人电话 13800138000。",
+    "personalityNotes": "喜欢听音乐，也喜欢追逗猫棒。",
+    "updatedAt": "2026-07-21T12:00:00.000Z",
+    "isPublic": true,
+    "rescuerPhone": "13800138000",
+    "internalNotes": "仅供内部查看",
+    "media": [
+      {
+        "id": "media-pocket-front",
+        "url": "https://example.invalid/cats/pocket-front.jpg",
+        "kind": "image",
+        "isPublic": true,
+        "usageScope": "official_channels",
+        "altText": "裤兜正面照片"
+      },
+      {
+        "id": "media-pocket-private",
+        "url": "https://example.invalid/cats/pocket-medical.jpg",
+        "kind": "image",
+        "isPublic": false
+      }
+    ]
+  },
+  {
+    "id": "cat-orange-002",
+    "name": "橘子",
+    "sex": "female",
+    "approximateAgeMonths": 30,
+    "breed": "中华田园猫",
+    "coatColor": "橘白",
+    "adoptionStatus": "available",
+    "description": "亲人、爱吃、擅长在镜头前保持严肃。",
+    "rescueStory": "来自社区绝育救助项目。",
+    "personalityNotes": "适合喜欢安静陪伴的家庭。",
+    "updatedAt": "2026-07-20T08:00:00.000Z",
+    "isPublic": true,
+    "media": []
+  }
+]
