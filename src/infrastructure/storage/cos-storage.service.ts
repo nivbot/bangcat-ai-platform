@@ -31,8 +31,8 @@ export class CosStorageService implements StoragePort {
       Bucket: this.bucket,
       Region: this.region,
       Key: input.key,
-      Body: input.body,
-      ContentType: input.contentType,
+      Body: input.body as COS.PutObjectParams['Body'],
+      ...(input.contentType ? { ContentType: input.contentType } : {}),
     });
     const url = this.publicBaseUrl
       ? `${this.publicBaseUrl.replace(/\/$/, '')}/${input.key}`
