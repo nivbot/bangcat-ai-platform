@@ -4,10 +4,13 @@ import { existsSync, readFileSync } from 'node:fs';
 const requiredFiles = [
   'AGENTS.md',
   'CONTRIBUTING.md',
+  'SECURITY.md',
+  'package-lock.json',
   'docs/project/OPERATING_MODEL.md',
   'docs/project/PROJECT_STATUS.md',
   'docs/project/ROADMAP.md',
   'docs/project/REVIEW_AND_MERGE.md',
+  'docs/project/RELEASE_PROCESS.md',
   'docs/architecture/TECH_STACK.md',
   '.github/PULL_REQUEST_TEMPLATE.md',
   '.github/CODEOWNERS',
@@ -49,6 +52,12 @@ for (const file of trackedFiles) {
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
 if (!packageJson.scripts?.typecheck || !packageJson.scripts?.test || !packageJson.scripts?.build) {
   errors.push('package.json must expose typecheck, test and build scripts');
+}
+if (!packageJson.scripts?.['policy:check']) errors.push('package.json must expose policy:check');
+
+const lockfile = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+if (lockfile.name !== packageJson.name || lockfile.version !== packageJson.version) {
+  errors.push('package-lock.json metadata does not match package.json');
 }
 
 const techStack = readFileSync('docs/architecture/TECH_STACK.md', 'utf8');
