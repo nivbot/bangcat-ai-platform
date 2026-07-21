@@ -1,0 +1,52 @@
+name: Technical Task
+about: Infrastructure, refactor, migration, test, security or maintenance work
+labels: []
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and reason
+      description: Explain why this work is necessary now.
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Technical objective
+      description: State the intended system property or behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and affected modules
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Architecture constraints
+      description: Reference TECH_STACK and relevant ADRs.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and evidence
+      placeholder: "- [ ] Testable criterion\n- [ ] Required command/result"
+    validations:
+      required: true
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure modes and rollback
+      description: Include migration, queue, storage and operational considerations.
+    validations:
+      required: true
+  - type: textarea
+    id: reviewer
+    attributes:
+      label: Required reviewer focus
+      description: Identify the risky areas for independent review.
+    validations:
+      required: true
