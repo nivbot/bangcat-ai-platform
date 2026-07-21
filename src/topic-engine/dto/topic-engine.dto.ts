@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -10,6 +11,7 @@ import {
   IsUrl,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
 
 export class TrendSignalDto {
@@ -97,7 +99,11 @@ export class TopicSignalsDto {
 }
 
 export class ScoreTopicCandidateDto {
-  @IsObject() signals!: TopicSignalsDto;
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TopicSignalsDto)
+  signals!: TopicSignalsDto;
+
   @IsOptional() @IsString() scoringVersion?: string;
 }
 
