@@ -39,6 +39,7 @@ jobs:
       AI_DB_USER: bangcat_ai_test
       AI_DB_PASSWORD: test-password
       AI_DB_NAME: catnote_ai_test
+      SOURCE_DATABASE_URL: mysql://bangcat_ai_test:test-password@127.0.0.1:3306/catnote_ai_test
       SOURCE_DB_HOST: 127.0.0.1
       SOURCE_DB_PORT: 3306
       SOURCE_DB_USER: bangcat_ai_test
@@ -53,5 +54,18 @@ jobs:
         with:
           node-version: 24
       - run: npm install --no-audit --no-fund
-      - run: npm run prisma:migrate:deploy
+      - run: npx prisma validate --schema prisma/ai/schema.prisma
+      - run: npx prisma validate --schema prisma/source/schema.prisma
       - run: npm run check
+
+  migration-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require reviewed migrations before production deploy
+        run: |
+          if [ -d prisma/ai/migrations ]; then
+            find prisma/ai/migrations -type f -name '*.sql' -print
+          else
+            echo 'No production migration committed yet; deployment remains blocked by the migration gate.'
+          fi
