@@ -44,20 +44,18 @@
 
 ## 当前实现
 
-当前代码完成了 Phase 0，并开始 Phase 1 的最小纵向闭环：
+当前代码完成了基础数据隔离，并实现 Topic Engine Phase T0：
 
-- 独立 AI SQLite 数据库；
-- 猫咪公开字段白名单；
-- 手机号、邮箱和微信号文本脱敏；
-- 非公开媒体过滤与授权范围；
-- 源数据哈希和幂等同步；
-- 同步批次、公开资产、媒体资产和审计表；
-- 猫咪资产查询 API；
-- 脱敏预览与测试数据同步接口；
-- 可解释的选题评分领域模型；
-- 相似度、版权和事实风险硬阻断；
-- 选题候选完整性校验；
-- 单元测试与脱敏 fixture。
+- 独立 AI SQLite 数据库与顺序迁移；
+- 猫咪公开字段白名单、隐私脱敏和幂等同步；
+- 趋势信号、参考案例、传播模式与案例关联；
+- 猫咪内容机会、选题候选和评分历史；
+- 人工创建、编辑、筛选、评分和状态流转 API；
+- 可解释选题评分、相似度/版权/事实风险硬阻断；
+- 候选编辑后自动清除旧评分，防止过期分数继续生效；
+- 所有 Topic Engine 写操作进入审计日志；
+- API Key 鉴权和操作人标识；
+- 单元测试、HTTP 集成测试与脱敏 fixture。
 
 当前**没有**连接生产数据库、自动采集第三方平台、调用大模型、生成图片/视频或自动发布。
 
@@ -81,17 +79,32 @@ curl -X POST http://127.0.0.1:3000/v1/sync/fixture \
   --data-binary @tests/fixtures/source-cats.json
 ```
 
-查询猫咪资产：
-
-```bash
-curl http://127.0.0.1:3000/v1/cats
-```
-
-生产或共享环境配置 `ADMIN_API_KEY` 后，写接口需要请求头：
+生产或共享环境配置 `ADMIN_API_KEY` 后，Topic Engine 与同步写接口需要请求头：
 
 ```text
 x-admin-api-key: <ADMIN_API_KEY>
+x-actor-id: <operator-id>
+x-actor-type: user
 ```
+
+## Topic Engine T0 API
+
+```text
+GET|POST  /v1/topic/trends
+GET|PUT   /v1/topic/trends/:id
+GET|POST  /v1/topic/references
+GET|PUT   /v1/topic/references/:id
+GET|POST  /v1/topic/patterns
+GET|PUT   /v1/topic/patterns/:id
+GET|POST  /v1/topic/opportunities
+GET|PUT   /v1/topic/opportunities/:id
+GET|POST  /v1/topic/candidates
+GET|PUT   /v1/topic/candidates/:id
+POST      /v1/topic/candidates/:id/score
+POST      /v1/topic/candidates/:id/status
+```
+
+候选评分请求中的 12 个信号均使用 `0—1` 数值。评分结果保存总分、逐项贡献、风险扣分、硬阻断原因和评分版本。
 
 ## 文档
 
@@ -118,10 +131,9 @@ x-admin-api-key: <ADMIN_API_KEY>
 
 ## 下一步
 
-1. 完成 Topic Engine Phase T0 数据表和迁移；
-2. 提供参考案例、趋势信号和选题候选的人工录入 API；
-3. 提供可解释评分、阻断和排序 API；
-4. 确认现有生产库类型、表结构和只读视图；
-5. 批准实际字段白名单并实现生产库只读 Connector；
-6. 使用 10 只测试猫、50—100 个人工筛选案例验证选题质量；
-7. 再进入案例 AI 拆解、内容包生成和表现反馈阶段。
+1. 使用 10 只脱敏测试猫录入真实内容机会；
+2. 人工录入 50—100 个高质量参考案例并抽象 10—20 个传播模式；
+3. 由运营人员连续使用 T0 工作流，验证评分和排序是否有效；
+4. 确认生产库只读视图并实现正式 Connector；
+5. 进入 Phase T1：使用模型辅助拆解案例，但后续生成器只读取抽象模式；
+6. 再进入候选自动生成、内容包生成和表现反馈。
