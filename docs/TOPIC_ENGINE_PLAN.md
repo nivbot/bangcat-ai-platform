@@ -11,25 +11,36 @@
 ### 任务
 
 - [x] 定义选题评分领域类型与基础规则；
-- [ ] 建立 `trend_signals`；
-- [ ] 建立 `reference_contents`；
-- [ ] 建立 `viral_patterns`；
-- [ ] 建立 `pattern_source_links`；
-- [ ] 建立 `cat_content_opportunities`；
-- [ ] 建立 `topic_candidates`；
-- [ ] 建立 `topic_score_runs`；
-- [ ] 支持手工录入参考链接和指标；
-- [ ] 支持手工录入节日、天气、内部事件和业务目标；
-- [ ] 提供候选创建、编辑、评分和状态流转 API；
-- [ ] 保存评分解释、风险和阻断理由；
-- [ ] 所有数据写入审计日志。
+- [x] 建立 `trend_signals`；
+- [x] 建立 `reference_contents`；
+- [x] 建立 `viral_patterns`；
+- [x] 建立 `pattern_source_links`；
+- [x] 建立 `cat_content_opportunities`；
+- [x] 建立 `topic_candidates`；
+- [x] 建立 `topic_score_runs`；
+- [x] 支持手工录入参考链接和指标；
+- [x] 支持手工录入节日、天气、内部事件和业务目标；
+- [x] 提供候选创建、编辑、评分和状态流转 API；
+- [x] 保存评分解释、风险和阻断理由；
+- [x] 所有数据写入审计日志。
+
+### 当前实现说明
+
+- T0 使用内部管理 API，读取和写入均受 `ADMIN_API_KEY` 保护；
+- 操作人通过 `x-actor-id` 与 `x-actor-type` 写入审计日志；
+- 候选内容被编辑后，旧评分自动清除并回到 `draft`；
+- 高相似度、高版权风险和高事实风险会触发硬阻断；
+- T0 只保存参考链接、指标、短摘要和抽象模式，不保存第三方完整作品；
+- 自动抓取、模型拆解、自动生成图文和视频仍不属于 T0。
 
 ### 验收
 
-- 能为 10 只测试猫建立内容机会；
-- 能手工创建 20 个参考案例和 10 个抽象模式；
-- 能生成或编辑选题候选并得到可解释评分；
-- 高相似度、高版权风险和高事实风险候选会被阻断。
+- [ ] 能为 10 只测试猫建立内容机会；
+- [ ] 能手工创建 20 个参考案例和 10 个抽象模式；
+- [x] 能生成或编辑选题候选并得到可解释评分；
+- [x] 高相似度、高版权风险和高事实风险候选会被阻断。
+
+前两项需要真实运营测试数据完成，不属于代码功能缺失。
 
 ## Phase T1：案例结构化拆解
 
@@ -185,20 +196,20 @@
 - [ ] 不绕过登录、验证码、访问控制和平台限制；
 - [ ] 为每个连接器记录合规依据。
 
-## 第一轮 Codex 执行指令
+## 下一轮 Codex 执行指令：Phase T1
 
 ```text
 请阅读 README.md、docs/PRD.md、docs/TOPIC_ENGINE.md 和 docs/TOPIC_ENGINE_PLAN.md。
 
-本轮只执行 Topic Engine Phase T0，不实现自动抓取、自动发布、图片生成或视频生成。
+Topic Engine Phase T0 已实现。下一轮先设计 Phase T1，不连接真实平台账号，不自动发布。
 
 请完成：
-1. 为 trend_signals、reference_contents、viral_patterns、pattern_source_links、cat_content_opportunities、topic_candidates 和 topic_score_runs 设计迁移；
-2. 复用 src/domain/topic-engine.ts 的评分边界，并补充输入校验；
-3. 提供人工录入参考案例、趋势信号和选题候选的 API；
-4. 提供选题评分、阻断和排序 API；
-5. 为高相似度、高版权风险、高事实风险和正常候选编写测试；
-6. 所有记录必须包含来源、版本和审计信息；
-7. 不保存第三方完整作品，不连接真实平台账号；
-8. 完成后更新文档并说明 Phase T1 的接口设计。
+1. 定义 ReferenceAnalysis JSON Schema；
+2. 建立 AI Provider 抽象和案例拆解提示词版本；
+3. 将标题功能、叙事节拍、情绪曲线、视觉语法、互动机制和禁止复用元素分离；
+4. 默认只把短摘要与抽象模式传给后续生成器；
+5. 提供分析结果人工修改、批准和版本化 API；
+6. 为逐句换皮、完整分镜复刻和安全抽象模式编写测试；
+7. 记录模型、token、费用、耗时和错误；
+8. 不保存第三方完整作品，不绕过平台访问控制。
 ```
