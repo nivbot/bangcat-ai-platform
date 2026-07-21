@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/source-prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// These models map to SELECT-only views created in the existing catnote database.
+// Prisma Migrate must never manage this schema.
+model AiPublicCat {
+  sourceId               String   @id @map("source_id") @db.VarChar(128)
+  name                   String   @db.VarChar(128)
+  sex                    String?  @db.VarChar(32)
+  age                    String?  @db.VarChar(64)
+  image                  String?  @db.Text
+  media                  Json?    @map("media_json")
+  adoptionStatus         String   @map("adoption_status") @db.VarChar(64)
+  publicDescription      String?  @map("public_description") @db.Text
+  publicRescueStory      String?  @map("public_rescue_story") @db.Text
+  publicPersonalityNotes String?  @map("public_personality_notes") @db.Text
+  stationId              String?  @map("station_id") @db.VarChar(128)
+  sourceUpdatedAt        DateTime @map("source_updated_at") @db.DateTime(3)
+
+  @@map("ai_public_cats")
+}
+
+model AiPublicCatEvent {
+  sourceId        String   @id @map("source_id") @db.VarChar(128)
+  catSourceId     String   @map("cat_source_id") @db.VarChar(128)
+  eventType       String   @map("event_type") @db.VarChar(64)
+  publicSummary   String   @map("public_summary") @db.Text
+  media           Json?    @map("media_json")
+  occurredAt      DateTime @map("occurred_at") @db.DateTime(3)
+  sourceUpdatedAt DateTime @map("source_updated_at") @db.DateTime(3)
+
+  @@index([catSourceId, occurredAt])
+  @@map("ai_public_cat_events")
+}
+
+model AiPublicMedia {
+  sourceId        String   @id @map("source_id") @db.VarChar(128)
+  catSourceId     String?  @map("cat_source_id") @db.VarChar(128)
+  sourceUrl       String   @map("source_url") @db.Text
+  kind            String   @db.VarChar(32)
+  usageScope      String   @map("usage_scope") @db.VarChar(64)
+  altText         String?  @map("alt_text") @db.Text
+  sourceUpdatedAt DateTime @map("source_updated_at") @db.DateTime(3)
+
+  @@index([catSourceId])
+  @@map("ai_public_media")
+}
+
+model AiPublicStation {
+  sourceId        String   @id @map("source_id") @db.VarChar(128)
+  name            String   @db.VarChar(255)
+  region          Json?
+  status          String?  @db.VarChar(64)
+  sourceUpdatedAt DateTime @map("source_updated_at") @db.DateTime(3)
+
+  @@map("ai_public_stations")
+}
