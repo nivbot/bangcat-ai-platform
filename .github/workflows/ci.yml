@@ -70,7 +70,17 @@ jobs:
       - name: Validate source Prisma schema
         run: npx prisma validate --schema prisma/source/schema.prisma
       - name: Typecheck
-        run: npm run typecheck
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee typecheck.log
+      - name: Upload typecheck diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-diagnostics
+          path: typecheck.log
+          if-no-files-found: error
+          retention-days: 14
       - name: Unit tests
         run: npm test
       - name: Production build
