@@ -11,8 +11,8 @@
 - [x] Agent 合作契约；
 - [x] Issue、PR、Review 和 Handoff 模板；
 - [x] 项目状态与路线图；
-- [ ] 配置 main 分支保护和 required checks；
-- [ ] 提交依赖锁文件并启用 `npm ci`。
+- [x] 提交依赖锁文件并启用 `npm ci`；
+- [ ] 配置 main 分支保护和 required checks。
 
 ## Milestone 1：生产数据与部署基础
 
