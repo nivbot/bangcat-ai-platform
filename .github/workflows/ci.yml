@@ -6,7 +6,11 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -53,28 +57,12 @@ jobs:
       INTERNAL_SERVICE_TOKEN: ci-test-token
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-          fi
-      - name: Commit dependency lock when first generated
-        if: github.event_name == 'pull_request'
-        run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
-            git config user.name "bangcat-ci"
-            git config user.email "actions@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: lock production dependencies"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
       - name: Repository policy
         run: npm run policy:check
       - name: Validate AI Prisma schema
