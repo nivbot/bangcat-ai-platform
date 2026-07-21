@@ -9,27 +9,27 @@ import {
   type Sex,
   type SourceMediaInput,
   type UntrustedSourceCat,
-} from "./cat-asset.ts";
-import { redactPublicText } from "./privacy.ts";
+} from './cat-asset.js';
+import { redactPublicText } from './privacy.js';
 
 const allowedSourceFields = new Set([
-  "id",
-  "name",
-  "sex",
-  "approximateAgeMonths",
-  "breed",
-  "coatColor",
-  "adoptionStatus",
-  "description",
-  "rescueStory",
-  "personalityNotes",
-  "updatedAt",
-  "isPublic",
-  "media",
+  'id',
+  'name',
+  'sex',
+  'approximateAgeMonths',
+  'breed',
+  'coatColor',
+  'adoptionStatus',
+  'description',
+  'rescueStory',
+  'personalityNotes',
+  'updatedAt',
+  'isPublic',
+  'media',
 ]);
 
 function text(value: unknown): string | null {
-  if (typeof value !== "string") return null;
+  if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -45,54 +45,54 @@ function publicText(
   if (redacted.redacted) {
     issues.push({
       field,
-      code: "redacted",
-      message: `Removed sensitive ${redacted.categories.join(", ")} information from public text.`,
+      code: 'redacted',
+      message: `Removed sensitive ${redacted.categories.join(', ')} information from public text.`,
     });
   }
   return redacted.value || null;
 }
 
 function normalizeSex(value: unknown, issues: SanitizationIssue[]): Sex {
-  if (value === "male" || value === "female" || value === "unknown") return value;
-  if (value === "公" || value === "公猫") return "male";
-  if (value === "母" || value === "母猫") return "female";
+  if (value === 'male' || value === 'female' || value === 'unknown') return value;
+  if (value === '公' || value === '公猫') return 'male';
+  if (value === '母' || value === '母猫') return 'female';
   if (value != null) {
-    issues.push({ field: "sex", code: "invalid", message: "Unknown sex value; normalized to unknown." });
+    issues.push({ field: 'sex', code: 'invalid', message: 'Unknown sex value; normalized to unknown.' });
   }
-  return "unknown";
+  return 'unknown';
 }
 
 function normalizeAdoptionStatus(
   value: unknown,
   issues: SanitizationIssue[],
 ): AdoptionStatus {
-  if (typeof value === "string" && adoptionStatuses.includes(value as AdoptionStatus)) {
+  if (typeof value === 'string' && adoptionStatuses.includes(value as AdoptionStatus)) {
     return value as AdoptionStatus;
   }
   const aliases: Record<string, AdoptionStatus> = {
-    待领养: "available",
-    可领养: "available",
-    领养中: "pending",
-    已领养: "adopted",
-    暂不可领养: "not_available",
+    待领养: 'available',
+    可领养: 'available',
+    领养中: 'pending',
+    已领养: 'adopted',
+    暂不可领养: 'not_available',
   };
-  if (typeof value === "string" && aliases[value]) return aliases[value];
+  if (typeof value === 'string' && aliases[value]) return aliases[value];
   issues.push({
-    field: "adoptionStatus",
-    code: value == null ? "missing" : "invalid",
-    message: "Adoption status is missing or unsupported; normalized to unknown.",
+    field: 'adoptionStatus',
+    code: value == null ? 'missing' : 'invalid',
+    message: 'Adoption status is missing or unsupported; normalized to unknown.',
   });
-  return "unknown";
+  return 'unknown';
 }
 
 function normalizeAge(value: unknown, issues: SanitizationIssue[]): number | null {
-  if (value == null || value === "") return null;
-  const numberValue = typeof value === "number" ? value : Number(value);
+  if (value == null || value === '') return null;
+  const numberValue = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(numberValue) || numberValue < 0 || numberValue > 360) {
     issues.push({
-      field: "approximateAgeMonths",
-      code: "invalid",
-      message: "Age must be between 0 and 360 months.",
+      field: 'approximateAgeMonths',
+      code: 'invalid',
+      message: 'Age must be between 0 and 360 months.',
     });
     return null;
   }
@@ -101,14 +101,14 @@ function normalizeAge(value: unknown, issues: SanitizationIssue[]): number | nul
 
 function normalizeUsageScope(value: unknown): MediaUsageScope {
   if (
-    value === "internal_only" ||
-    value === "official_channels" ||
-    value === "partner_creators" ||
-    value === "public_mcp"
+    value === 'internal_only' ||
+    value === 'official_channels' ||
+    value === 'partner_creators' ||
+    value === 'public_mcp'
   ) {
     return value;
   }
-  return "official_channels";
+  return 'official_channels';
 }
 
 function normalizeMedia(value: unknown, issues: SanitizationIssue[]): PublicMediaAsset[] {
@@ -116,13 +116,13 @@ function normalizeMedia(value: unknown, issues: SanitizationIssue[]): PublicMedi
   const output: PublicMediaAsset[] = [];
 
   for (const [index, untyped] of value.entries()) {
-    if (!untyped || typeof untyped !== "object") continue;
+    if (!untyped || typeof untyped !== 'object') continue;
     const item = untyped as SourceMediaInput;
     if (item.isPublic === false) {
       issues.push({
         field: `media[${index}]`,
-        code: "excluded",
-        message: "Non-public media was excluded.",
+        code: 'excluded',
+        message: 'Non-public media was excluded.',
       });
       continue;
     }
@@ -131,15 +131,15 @@ function normalizeMedia(value: unknown, issues: SanitizationIssue[]): PublicMedi
     if (!id || !url || !/^https?:\/\//i.test(url)) {
       issues.push({
         field: `media[${index}]`,
-        code: "invalid",
-        message: "Media requires an id and an http(s) URL.",
+        code: 'invalid',
+        message: 'Media requires an id and an http(s) URL.',
       });
       continue;
     }
     output.push({
       sourceMediaId: id,
       url,
-      kind: item.kind === "video" ? "video" : "image",
+      kind: item.kind === 'video' ? 'video' : 'image',
       usageScope: normalizeUsageScope(item.usageScope),
       altText: publicText(item.altText, `media[${index}].altText`, issues),
     });
@@ -148,14 +148,14 @@ function normalizeMedia(value: unknown, issues: SanitizationIssue[]): PublicMedi
   return output;
 }
 
-function completenessScore(asset: Omit<PublicCatAsset, "completenessScore">): number {
+function completenessScore(asset: Omit<PublicCatAsset, 'completenessScore'>): number {
   const checks = [
     Boolean(asset.name),
-    asset.sex !== "unknown",
+    asset.sex !== 'unknown',
     asset.approximateAgeMonths !== null,
     Boolean(asset.breed),
     Boolean(asset.coatColor),
-    asset.adoptionStatus !== "unknown",
+    asset.adoptionStatus !== 'unknown',
     Boolean(asset.publicDescription),
     Boolean(asset.publicRescueStory),
     Boolean(asset.publicPersonalityNotes),
@@ -168,20 +168,20 @@ export function sanitizeSourceCat(source: UntrustedSourceCat): SanitizationResul
   const issues: SanitizationIssue[] = [];
   const sourceId = text(source.id);
   const name = text(source.name);
-  if (!sourceId) throw new Error("Source cat id is required.");
+  if (!sourceId) throw new Error('Source cat id is required.');
   if (!name) throw new Error(`Source cat ${sourceId} is missing a public name.`);
 
-  const base: Omit<PublicCatAsset, "completenessScore"> = {
+  const base: Omit<PublicCatAsset, 'completenessScore'> = {
     sourceId,
     name,
     sex: normalizeSex(source.sex, issues),
     approximateAgeMonths: normalizeAge(source.approximateAgeMonths, issues),
-    breed: publicText(source.breed, "breed", issues),
-    coatColor: publicText(source.coatColor, "coatColor", issues),
+    breed: publicText(source.breed, 'breed', issues),
+    coatColor: publicText(source.coatColor, 'coatColor', issues),
     adoptionStatus: normalizeAdoptionStatus(source.adoptionStatus, issues),
-    publicDescription: publicText(source.description, "description", issues),
-    publicRescueStory: publicText(source.rescueStory, "rescueStory", issues),
-    publicPersonalityNotes: publicText(source.personalityNotes, "personalityNotes", issues),
+    publicDescription: publicText(source.description, 'description', issues),
+    publicRescueStory: publicText(source.rescueStory, 'rescueStory', issues),
+    publicPersonalityNotes: publicText(source.personalityNotes, 'personalityNotes', issues),
     sourceUpdatedAt: text(source.updatedAt) ?? new Date(0).toISOString(),
     isPublic: source.isPublic !== false,
     media: normalizeMedia(source.media, issues),
@@ -191,8 +191,8 @@ export function sanitizeSourceCat(source: UntrustedSourceCat): SanitizationResul
   for (const field of excludedSourceFields) {
     issues.push({
       field,
-      code: "excluded",
-      message: "Field is not on the AI asset allowlist and was not copied.",
+      code: 'excluded',
+      message: 'Field is not on the AI asset allowlist and was not copied.',
     });
   }
 
