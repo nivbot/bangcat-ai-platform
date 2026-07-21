@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { openDatabase } from "./storage/sqlite-database.ts";
 import { CatAssetRepository } from "./storage/cat-asset-repository.ts";
+import { TopicEngineRepository } from "./storage/topic-engine-repository.ts";
 import { createHttpServer } from "./http/server.ts";
 
 const host = process.env.HOST ?? "127.0.0.1";
@@ -11,7 +12,11 @@ mkdirSync(dirname(databasePath), { recursive: true });
 
 const database = openDatabase(databasePath);
 const repository = new CatAssetRepository(database);
-const server = createHttpServer(repository, { adminApiKey: process.env.ADMIN_API_KEY });
+const topicRepository = new TopicEngineRepository(database);
+const server = createHttpServer(repository, {
+  adminApiKey: process.env.ADMIN_API_KEY,
+  topicRepository,
+});
 
 server.listen(port, host, () => {
   console.log(`Bangcat AI API listening on http://${host}:${port}`);
@@ -24,5 +29,6 @@ function shutdown(): void {
     process.exit(0);
   });
 }
+
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
