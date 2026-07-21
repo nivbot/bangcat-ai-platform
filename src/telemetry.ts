@@ -7,8 +7,9 @@ let sdk: NodeSDK | null = null;
 export async function startTelemetry(): Promise<void> {
   const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   if (!endpoint) return;
+
+  process.env.OTEL_SERVICE_NAME ||= 'bangcat-ai-platform';
   sdk = new NodeSDK({
-    serviceName: process.env.OTEL_SERVICE_NAME || 'bangcat-ai-platform',
     traceExporter: new OTLPTraceExporter({ url: `${endpoint.replace(/\/$/, '')}/v1/traces` }),
     instrumentations: [getNodeAutoInstrumentations()],
   });
