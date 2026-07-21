@@ -1,0 +1,55 @@
+services:
+  bangcat-ai-api:
+    build: .
+    container_name: bangcat-ai-api
+    restart: unless-stopped
+    command: ["node", "dist/main.js"]
+    env_file:
+      - ${AI_ENV_FILE:-.env}
+    ports:
+      - "127.0.0.1:${AI_API_PORT:-3010}:3010"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - bangcat-ai-network
+      - catnote-shared-network
+
+  bangcat-ai-worker:
+    build: .
+    container_name: bangcat-ai-worker
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    env_file:
+      - ${AI_ENV_FILE:-.env}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - bangcat-ai-network
+      - catnote-shared-network
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: bangcat-ai-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - bangcat-ai-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - bangcat-ai-network
+
+volumes:
+  bangcat-ai-redis-data:
+
+networks:
+  bangcat-ai-network:
+    driver: bridge
+  catnote-shared-network:
+    external: true
+    name: catnote-shared-network
