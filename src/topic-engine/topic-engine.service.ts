@@ -1,7 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { AiPrismaService } from '../infrastructure/database/ai-prisma.service.js';
-import { scoreTopicCandidate, validateTopicCandidate, type TopicSignals } from '../domain/topic-engine.js';
+import type { Prisma } from '../generated/ai-prisma/client.js';
+import {
+  scoreTopicCandidate,
+  validateTopicCandidate,
+  type TopicSignals,
+} from '../domain/topic-engine.js';
 import type {
   CatOpportunityDto,
   ReferenceContentDto,
@@ -10,6 +15,10 @@ import type {
   TrendSignalDto,
   ViralPatternDto,
 } from './dto/topic-engine.dto.js';
+
+function asJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value ?? {})) as Prisma.InputJsonValue;
+}
 
 export interface ActorContext {
   tenantId: string;
@@ -22,7 +31,13 @@ export interface ActorContext {
 export class TopicEngineService {
   constructor(private readonly prisma: AiPrismaService) {}
 
-  private async audit(actor: ActorContext, action: string, entityType: string, entityId: string, metadata: Record<string, unknown> = {}) {
+  private async audit(
+    actor: ActorContext,
+    action: string,
+    entityType: string,
+    entityId: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
     await this.prisma.auditLog.create({
       data: {
         tenantId: actor.tenantId,
@@ -32,7 +47,7 @@ export class TopicEngineService {
         action,
         entityType,
         entityId,
-        metadata,
+        metadata: asJson(metadata),
       },
     });
   }
@@ -58,7 +73,7 @@ export class TopicEngineService {
       startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
       sourceUrl: dto.sourceUrl || null,
-      metadata: dto.metadata ?? {},
+      metadata: asJson(dto.metadata ?? {}),
       status: dto.status ?? 'active',
       updatedBy: actor.actorId,
     };
@@ -88,7 +103,7 @@ export class TopicEngineService {
       urlHash,
       title: dto.title?.trim() || null,
       summary: dto.summary.trim(),
-      metrics: dto.metrics ?? {},
+      metrics: asJson(dto.metrics ?? {}),
       publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
       capturedAt: dto.capturedAt ? new Date(dto.capturedAt) : new Date(),
       status: dto.status ?? 'pending',
@@ -115,7 +130,9 @@ export class TopicEngineService {
     }
     const referenceIds = [...new Set(dto.referenceContentIds ?? [])];
     if (referenceIds.length > 0) {
-      const count = await this.prisma.referenceContent.count({ where: { tenantId: actor.tenantId, id: { in: referenceIds } } });
+      const count = await this.prisma.referenceContent.count({
+        where: { tenantId: actor.tenantId, id: { in: referenceIds } },
+      });
       if (count !== referenceIds.length) throw new BadRequestException('reference_not_found');
     }
     const data = {
@@ -135,10 +152,16 @@ export class TopicEngineService {
       const pattern = id
         ? await tx.viralPattern.update({ where: { id }, data })
         : await tx.viralPattern.create({ data: { ...data, createdBy: actor.actorId } });
-      await tx.patternSourceLink.deleteMany({ where: { tenantId: actor.tenantId, patternId: pattern.id } });
+      await tx.patternSourceLink.deleteMany({
+        where: { tenantId: actor.tenantId, patternId: pattern.id },
+      });
       if (referenceIds.length > 0) {
         await tx.patternSourceLink.createMany({
-          data: referenceIds.map((referenceContentId) => ({ tenantId: actor.tenantId, patternId: pattern.id, referenceContentId })),
+          data: referenceIds.map((referenceContentId) => ({
+            tenantId: actor.tenantId,
+            patternId: pattern.id,
+            referenceContentId,
+          })),
         });
       }
       return pattern;
@@ -149,7 +172,11 @@ export class TopicEngineService {
 
   listOpportunities(actor: ActorContext, catAssetId?: string, status?: string) {
     return this.prisma.catContentOpportunity.findMany({
-      where: { tenantId: actor.tenantId, ...(catAssetId ? { catAssetId } : {}), ...(status ? { status } : {}) },
+      where: {
+        tenantId: actor.tenantId,
+        ...(catAssetId ? { catAssetId } : {}),
+        ...(status ? { status } : {}),
+      },
       orderBy: { updatedAt: 'desc' },
     });
   }
@@ -158,7 +185,10 @@ export class TopicEngineService {
     if (id && !(await this.prisma.catContentOpportunity.findFirst({ where: { id, tenantId: actor.tenantId }, select: { id: true } }))) {
       throw new NotFoundException('opportunity_not_found');
     }
-    const cat = await this.prisma.catAsset.findFirst({ where: { id: dto.catAssetId, tenantId: actor.tenantId }, select: { id: true } });
+    const cat = await this.prisma.catAsset.findFirst({
+      where: { id: dto.catAssetId, tenantId: actor.tenantId },
+      select: { id: true },
+    });
     if (!cat) throw new BadRequestException('cat_not_found');
     const data = {
       tenantId: actor.tenantId,
@@ -181,7 +211,11 @@ export class TopicEngineService {
 
   listCandidates(actor: ActorContext, status?: string, catAssetId?: string) {
     return this.prisma.topicCandidate.findMany({
-      where: { tenantId: actor.tenantId, ...(status ? { status } : {}), ...(catAssetId ? { catAssetId } : {}) },
+      where: {
+        tenantId: actor.tenantId,
+        ...(status ? { status } : {}),
+        ...(catAssetId ? { catAssetId } : {}),
+      },
       include: { trendLinks: true, patternLinks: true },
       orderBy: [{ totalScore: 'desc' }, { updatedAt: 'desc' }],
     });
@@ -191,8 +225,12 @@ export class TopicEngineService {
     if (id && !(await this.prisma.topicCandidate.findFirst({ where: { id, tenantId: actor.tenantId }, select: { id: true } }))) {
       throw new NotFoundException('candidate_not_found');
     }
-    const cat = await this.prisma.catAsset.findFirst({ where: { id: dto.catAssetId, tenantId: actor.tenantId }, select: { id: true } });
+    const cat = await this.prisma.catAsset.findFirst({
+      where: { id: dto.catAssetId, tenantId: actor.tenantId },
+      select: { id: true },
+    });
     if (!cat) throw new BadRequestException('cat_not_found');
+
     const patternIds = [...new Set(dto.patternIds)];
     const trendIds = [...new Set(dto.trendSignalIds)];
     const [patternCount, trendCount] = await Promise.all([
@@ -248,11 +286,19 @@ export class TopicEngineService {
       await tx.topicCandidatePattern.deleteMany({ where: { tenantId: actor.tenantId, topicCandidateId: candidate.id } });
       await tx.topicCandidateTrend.deleteMany({ where: { tenantId: actor.tenantId, topicCandidateId: candidate.id } });
       await tx.topicCandidatePattern.createMany({
-        data: patternIds.map((viralPatternId) => ({ tenantId: actor.tenantId, topicCandidateId: candidate.id, viralPatternId })),
+        data: patternIds.map((viralPatternId) => ({
+          tenantId: actor.tenantId,
+          topicCandidateId: candidate.id,
+          viralPatternId,
+        })),
       });
       if (trendIds.length > 0) {
         await tx.topicCandidateTrend.createMany({
-          data: trendIds.map((trendSignalId) => ({ tenantId: actor.tenantId, topicCandidateId: candidate.id, trendSignalId })),
+          data: trendIds.map((trendSignalId) => ({
+            tenantId: actor.tenantId,
+            topicCandidateId: candidate.id,
+            trendSignalId,
+          })),
         });
       }
       return candidate;
@@ -311,7 +357,10 @@ export class TopicEngineService {
     if (['recommended', 'review', 'rejected', 'blocked', 'selected'].includes(status) && !candidate.score) {
       throw new BadRequestException('candidate_must_be_scored');
     }
-    const updated = await this.prisma.topicCandidate.update({ where: { id }, data: { status, updatedBy: actor.actorId } });
+    const updated = await this.prisma.topicCandidate.update({
+      where: { id },
+      data: { status, updatedBy: actor.actorId },
+    });
     await this.audit(actor, 'topic.candidate.status_changed', 'topic_candidate', id, { status });
     return updated;
   }
