@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/ai-prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model SourceSyncJob {
+  id             String              @id @db.VarChar(36)
+  tenantId       String              @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  mode           String              @db.VarChar(32)
+  status         String              @db.VarChar(32)
+  startedAt      DateTime            @map("started_at") @db.DateTime(3)
+  finishedAt     DateTime?           @map("finished_at") @db.DateTime(3)
+  readCount      Int                 @default(0) @map("read_count")
+  insertedCount  Int                 @default(0) @map("inserted_count")
+  updatedCount   Int                 @default(0) @map("updated_count")
+  unchangedCount Int                 @default(0) @map("unchanged_count")
+  errorCount     Int                 @default(0) @map("error_count")
+  errorSummary   String?             @map("error_summary") @db.Text
+  snapshots      SourceCatSnapshot[]
+
+  @@index([tenantId, startedAt])
+  @@map("source_sync_jobs")
+}
+
+model SourceCatSnapshot {
+  id              String        @id @default(uuid()) @db.VarChar(36)
+  tenantId        String        @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  sourceId        String        @map("source_id") @db.VarChar(128)
+  syncJobId       String        @map("sync_job_id") @db.VarChar(36)
+  sourceUpdatedAt DateTime      @map("source_updated_at") @db.DateTime(3)
+  sourceHash      String        @map("source_hash") @db.VarChar(128)
+  sanitized       Json          @map("sanitized_json")
+  issues          Json          @map("issues_json")
+  syncedAt        DateTime      @map("synced_at") @db.DateTime(3)
+  syncJob         SourceSyncJob @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, sourceId])
+  @@index([syncJobId])
+  @@map("source_cat_snapshots")
+}
+
+model CatAsset {
+  id                     String                  @id @default(uuid()) @db.VarChar(36)
+  tenantId               String                  @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  sourceId               String                  @map("source_id") @db.VarChar(128)
+  name                   String                  @db.VarChar(128)
+  sex                    String                  @db.VarChar(32)
+  approximateAgeMonths   Int?                    @map("approximate_age_months")
+  breed                  String?                 @db.VarChar(128)
+  coatColor              String?                 @map("coat_color") @db.VarChar(128)
+  adoptionStatus         String                  @map("adoption_status") @db.VarChar(64)
+  publicDescription      String?                 @map("public_description") @db.Text
+  publicRescueStory      String?                 @map("public_rescue_story") @db.Text
+  publicPersonalityNotes String?                 @map("public_personality_notes") @db.Text
+  sourceUpdatedAt        DateTime                @map("source_updated_at") @db.DateTime(3)
+  sourceHash             String                  @map("source_hash") @db.VarChar(128)
+  isPublic               Boolean                 @default(true) @map("is_public")
+  completenessScore      Int                     @default(0) @map("completeness_score")
+  createdAt              DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.DateTime(3)
+  media                  CatMediaAsset[]
+  opportunities          CatContentOpportunity[]
+  topicCandidates        TopicCandidate[]
+
+  @@unique([tenantId, sourceId])
+  @@index([tenantId, adoptionStatus])
+  @@index([tenantId, isPublic])
+  @@map("cat_assets")
+}
+
+model CatMediaAsset {
+  id            String   @id @default(uuid()) @db.VarChar(36)
+  tenantId      String   @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  catAssetId    String   @map("cat_asset_id") @db.VarChar(36)
+  sourceMediaId String   @map("source_media_id") @db.VarChar(128)
+  sourceUrl     String   @map("source_url") @db.Text
+  storageKey    String?  @map("storage_key") @db.VarChar(512)
+  kind          String   @db.VarChar(32)
+  usageScope    String   @map("usage_scope") @db.VarChar(64)
+  altText       String?  @map("alt_text") @db.Text
+  contentHash   String?  @map("content_hash") @db.VarChar(128)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  catAsset      CatAsset @relation(fields: [catAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, catAssetId, sourceMediaId])
+  @@index([tenantId, catAssetId])
+  @@map("cat_media_assets")
+}
+
+model TrendSignal {
+  id             String                 @id @default(uuid()) @db.VarChar(36)
+  tenantId       String                 @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  signalType     String                 @map("signal_type") @db.VarChar(64)
+  title          String                 @db.VarChar(255)
+  description    String?                @db.Text
+  platform       String?                @db.VarChar(64)
+  signalStrength Decimal                @map("signal_strength") @db.Decimal(6, 4)
+  startsAt       DateTime?              @map("starts_at") @db.DateTime(3)
+  expiresAt      DateTime?              @map("expires_at") @db.DateTime(3)
+  sourceUrl      String?                @map("source_url") @db.Text
+  metadata       Json                   @map("metadata_json")
+  status         String                 @default("active") @db.VarChar(32)
+  createdBy      String?                @map("created_by") @db.VarChar(128)
+  updatedBy      String?                @map("updated_by") @db.VarChar(128)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.DateTime(3)
+  candidateLinks TopicCandidateTrend[]
+
+  @@index([tenantId, status, expiresAt])
+  @@map("trend_signals")
+}
+
+model ReferenceContent {
+  id             String              @id @default(uuid()) @db.VarChar(36)
+  tenantId       String              @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  platform       String              @db.VarChar(64)
+  url            String              @db.Text
+  urlHash        String              @map("url_hash") @db.VarChar(128)
+  title          String?             @db.VarChar(512)
+  summary        String              @db.Text
+  metrics        Json                @map("metrics_json")
+  publishedAt    DateTime?           @map("published_at") @db.DateTime(3)
+  capturedAt     DateTime            @map("captured_at") @db.DateTime(3)
+  status         String              @default("pending") @db.VarChar(32)
+  createdBy      String?             @map("created_by") @db.VarChar(128)
+  updatedBy      String?             @map("updated_by") @db.VarChar(128)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.DateTime(3)
+  patternLinks   PatternSourceLink[]
+
+  @@unique([tenantId, platform, urlHash])
+  @@index([tenantId, platform, status])
+  @@map("reference_contents")
+}
+
+model ViralPattern {
+  id                   String                  @id @default(uuid()) @db.VarChar(36)
+  tenantId             String                  @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  name                 String                  @db.VarChar(255)
+  category             String                  @db.VarChar(64)
+  hookPattern          String                  @map("hook_pattern") @db.Text
+  narrativeStructure  Json                    @map("narrative_structure_json")
+  emotionCurve         Json                    @map("emotion_curve_json")
+  visualGrammar        Json                    @map("visual_grammar_json")
+  interactionMechanism String?                 @map("interaction_mechanism") @db.Text
+  prohibitedElements   Json                    @map("prohibited_elements_json")
+  status               String                  @default("draft") @db.VarChar(32)
+  createdBy            String?                 @map("created_by") @db.VarChar(128)
+  updatedBy            String?                 @map("updated_by") @db.VarChar(128)
+  createdAt            DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt            DateTime                @updatedAt @map("updated_at") @db.DateTime(3)
+  sourceLinks          PatternSourceLink[]
+  candidateLinks       TopicCandidatePattern[]
+
+  @@index([tenantId, status, category])
+  @@map("viral_patterns")
+}
+
+model PatternSourceLink {
+  tenantId          String           @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  patternId         String           @map("pattern_id") @db.VarChar(36)
+  referenceContentId String          @map("reference_content_id") @db.VarChar(36)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  pattern           ViralPattern     @relation(fields: [patternId], references: [id], onDelete: Cascade)
+  referenceContent  ReferenceContent @relation(fields: [referenceContentId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, patternId, referenceContentId])
+  @@index([tenantId, referenceContentId])
+  @@map("pattern_source_links")
+}
+
+model CatContentOpportunity {
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  tenantId        String    @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  catAssetId      String    @map("cat_asset_id") @db.VarChar(36)
+  opportunityType String    @map("opportunity_type") @db.VarChar(64)
+  summary         String    @db.Text
+  uniqueFacts     Json      @map("unique_facts_json")
+  availableAssets Json      @map("available_assets_json")
+  businessGoals   Json      @map("business_goals_json")
+  validUntil      DateTime? @map("valid_until") @db.DateTime(3)
+  status          String    @default("active") @db.VarChar(32)
+  createdBy       String?   @map("created_by") @db.VarChar(128)
+  updatedBy       String?   @map("updated_by") @db.VarChar(128)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  catAsset        CatAsset  @relation(fields: [catAssetId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, catAssetId, status])
+  @@map("cat_content_opportunities")
+}
+
+model TopicCandidate {
+  id                     String                  @id @default(uuid()) @db.VarChar(36)
+  tenantId               String                  @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  catAssetId             String                  @map("cat_asset_id") @db.VarChar(36)
+  platform               String                  @db.VarChar(64)
+  format                 String                  @db.VarChar(64)
+  contentLevel           String                  @map("content_level") @db.VarChar(32)
+  premise                String                  @db.Text
+  audienceReason         String                  @map("audience_reason") @db.Text
+  hook                   String                  @db.Text
+  storyBeats             Json                    @map("story_beats_json")
+  factSourceIds          Json                    @map("fact_source_ids_json")
+  assetRequirements      Json                    @map("asset_requirements_json")
+  originalityConstraints Json                    @map("originality_constraints_json")
+  signals                Json?                   @map("signals_json")
+  score                  Json?                   @map("score_json")
+  totalScore             Decimal?                @map("total_score") @db.Decimal(6, 2)
+  scoreDecision          String?                 @map("score_decision") @db.VarChar(32)
+  scoreVersion           String?                 @map("score_version") @db.VarChar(64)
+  status                 String                  @default("draft") @db.VarChar(32)
+  createdBy              String?                 @map("created_by") @db.VarChar(128)
+  updatedBy              String?                 @map("updated_by") @db.VarChar(128)
+  createdAt              DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.DateTime(3)
+  catAsset               CatAsset                @relation(fields: [catAssetId], references: [id], onDelete: Cascade)
+  trendLinks             TopicCandidateTrend[]
+  patternLinks           TopicCandidatePattern[]
+  scoreRuns              TopicScoreRun[]
+
+  @@index([tenantId, status, totalScore])
+  @@index([tenantId, catAssetId])
+  @@map("topic_candidates")
+}
+
+model TopicCandidateTrend {
+  tenantId         String          @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  topicCandidateId String          @map("topic_candidate_id") @db.VarChar(36)
+  trendSignalId    String          @map("trend_signal_id") @db.VarChar(36)
+  candidate        TopicCandidate  @relation(fields: [topicCandidateId], references: [id], onDelete: Cascade)
+  trendSignal      TrendSignal     @relation(fields: [trendSignalId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, topicCandidateId, trendSignalId])
+  @@index([tenantId, trendSignalId])
+  @@map("topic_candidate_trends")
+}
+
+model TopicCandidatePattern {
+  tenantId         String          @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  topicCandidateId String          @map("topic_candidate_id") @db.VarChar(36)
+  viralPatternId   String          @map("viral_pattern_id") @db.VarChar(36)
+  candidate        TopicCandidate  @relation(fields: [topicCandidateId], references: [id], onDelete: Cascade)
+  viralPattern     ViralPattern    @relation(fields: [viralPatternId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, topicCandidateId, viralPatternId])
+  @@index([tenantId, viralPatternId])
+  @@map("topic_candidate_patterns")
+}
+
+model TopicScoreRun {
+  id               String         @id @default(uuid()) @db.VarChar(36)
+  tenantId         String         @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  topicCandidateId String         @map("topic_candidate_id") @db.VarChar(36)
+  signals          Json           @map("signals_json")
+  result           Json           @map("result_json")
+  scoringVersion   String         @map("scoring_version") @db.VarChar(64)
+  createdBy        String?        @map("created_by") @db.VarChar(128)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  candidate        TopicCandidate @relation(fields: [topicCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, topicCandidateId, createdAt])
+  @@map("topic_score_runs")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  tenantId   String   @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  requestId  String?  @map("request_id") @db.VarChar(128)
+  actorType  String   @map("actor_type") @db.VarChar(64)
+  actorId    String?  @map("actor_id") @db.VarChar(128)
+  action     String   @db.VarChar(128)
+  entityType String   @map("entity_type") @db.VarChar(128)
+  entityId   String?  @map("entity_id") @db.VarChar(128)
+  metadata   Json     @map("metadata_json")
+  createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([tenantId, entityType, entityId, createdAt])
+  @@index([tenantId, actorId, createdAt])
+  @@map("audit_logs")
+}
