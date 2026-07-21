@@ -4,6 +4,8 @@ import type { UntrustedSourceCat } from "../domain/cat-asset.ts";
 import { sanitizeSourceCat } from "../domain/sanitize-source-cat.ts";
 import { syncCats } from "../application/sync-cats.ts";
 import { CatAssetRepository } from "../storage/cat-asset-repository.ts";
+import type { TopicEngineRepository } from "../storage/topic-engine-repository.ts";
+import { handleTopicRoutes } from "./topic-routes.ts";
 
 function json(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -24,7 +26,7 @@ function authorized(request: IncomingMessage, adminApiKey: string | undefined): 
 
 export function createHttpServer(
   repository: CatAssetRepository,
-  options: { adminApiKey?: string } = {},
+  options: { adminApiKey?: string; topicRepository?: TopicEngineRepository } = {},
 ) {
   return createServer(async (request, response) => {
     try {
@@ -33,6 +35,17 @@ export function createHttpServer(
 
       if (method === "GET" && url.pathname === "/health") {
         return json(response, 200, { status: "ok", service: "bangcat-ai-platform" });
+      }
+
+      if (url.pathname.startsWith("/v1/topic/")) {
+        if (!authorized(request, options.adminApiKey)) {
+          return json(response, 401, { error: "unauthorized" });
+        }
+        if (!options.topicRepository) {
+          return json(response, 503, { error: "topic_engine_not_configured" });
+        }
+        await handleTopicRoutes(request, response, url, method, options.topicRepository);
+        return;
       }
 
       if (method === "GET" && url.pathname === "/v1/cats") {
