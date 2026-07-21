@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": true,
+    "declaration": false
+  },
+  "include": [
+    "src/main.ts",
+    "src/worker.ts",
+    "src/telemetry.ts",
+    "src/app.module.ts",
+    "src/common/**/*.ts",
+    "src/config/**/*.ts",
+    "src/domain/topic-engine.ts",
+    "src/health/**/*.ts",
+    "src/infrastructure/**/*.ts",
+    "src/jobs/**/*.ts",
+    "src/topic-engine/**/*.ts",
+    "src/generated/**/*.ts"
+  ],
+  "exclude": ["tests", "src/application", "src/http", "src/storage", "src/index.ts"]
+}
