@@ -1,14 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { UntrustedSourceCat } from '../src/domain/cat-asset.js';
 import { sanitizeSourceCat } from '../src/domain/sanitize-source-cat.js';
 
 const fixture = JSON.parse(
   readFileSync(new URL('./fixtures/source-cats.json', import.meta.url), 'utf8'),
-) as Array<Record<string, unknown>>;
+) as UntrustedSourceCat[];
+const sourceCat = fixture[0];
+if (!sourceCat) throw new Error('source-cats fixture must contain at least one record');
 
 describe('sanitizeSourceCat', () => {
   it('copies only allowlisted fields and redacts sensitive text', () => {
-    const result = sanitizeSourceCat(fixture[0]);
+    const result = sanitizeSourceCat(sourceCat);
 
     expect(result.asset.name).toBe('裤兜');
     expect(result.asset.sex).toBe('male');
