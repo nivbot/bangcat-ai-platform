@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
+import { WorkerModule } from './worker.module.js';
 import { startTelemetry, stopTelemetry } from './telemetry.js';
 
 await startTelemetry();
-const app = await NestFactory.createApplicationContext(AppModule, { bufferLogs: true });
+const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
 app.enableShutdownHooks();
 
 const shutdown = async () => {
