@@ -1,143 +1,187 @@
 # Bangcat AI Platform
 
-“帮猫小本本”的 AI 猫咪内容资产与选题创作平台。
+“帮猫小本本”的 AI 猫咪数字资产、选题和内容生产平台。
 
-系统把现有小程序里的公开猫咪资料，以只读、脱敏、可审计的方式同步到独立 AI 资产库；再通过选题引擎学习趋势和高传播内容的抽象结构，为角色卡、原创图文、视频脚本和未来 MCP 创作能力提供基础。
+本仓库采用生产级现代架构，并与现有 `AIcoding / catnoteapi_v2` 平台保持清晰边界：旧平台继续负责用户、权限、猫咪业务资料、站点、支付、门禁和直播；AI 平台负责脱敏资产、选题、生成任务、内容审核和表现学习。
 
-项目的核心不只是“让 AI 写内容”，而是建立完整闭环：
+## 已确认技术栈
+
+- Node.js 24 LTS
+- TypeScript 5.9
+- NestJS 11 + Fastify 5
+- Prisma ORM 7 + MySQL 8.4 LTS
+- Redis 7.4 + BullMQ 5
+- 腾讯云 COS
+- OpenTelemetry
+- Vitest
+- Docker Compose + GitHub Actions
+
+完整决策见：
+
+- [技术栈基线](docs/architecture/TECH_STACK.md)
+- [ADR-0003：生产级 AI 平台技术栈](docs/architecture/ADR-0003-production-platform-stack.md)
+- [Bootstrap 迁移计划](docs/architecture/MIGRATION_FROM_BOOTSTRAP.md)
+
+## 系统关系
 
 ```text
-猫咪数字资产
-    +
-趋势与爆款模式库
-    ↓
-选题引擎
-    ↓
-图文 / 视频内容包
-    ↓
-原创、事实与授权检查
-    ↓
-人工审核与发布
-    ↓
-表现数据回流
+小程序 / 管理端 / PC 超管
+             │
+             ▼
+      现有 catnoteapi_v2
+    JWT、角色与业务接口代理
+             │ internal service token
+             ▼
+       bangcat-ai-api
+          │       │
+          │       ▼
+          │ Redis + BullMQ
+          │       │
+          │       ▼
+          │ bangcat-ai-worker
+          │
+   ┌──────┼────────────┐
+   ▼      ▼            ▼
+AI MySQL 旧库只读Views 腾讯云COS
 ```
 
-## 核心产品能力
+## 数据库原则
 
-### 1. AI 猫咪资产库
+同一 MySQL 实例，不同数据库：
 
-保存脱敏后的猫咪事实、公开素材、角色卡、故事边界、创作历史和授权信息。
+```text
+catnote_prod       现有业务生产库
+catnote_ai_prod    AI 平台生产库
+catnote_test       现有业务测试库
+catnote_ai_test    AI 平台测试库
+```
 
-### 2. 选题引擎
+必须使用两个账号：
 
-决定“现在讲什么、为什么用户会看、应该选择哪只猫、适合哪个平台和内容形式”。
+- AI 应用账号：只读写 `catnote_ai_*`；
+- 来源账号：只读 `catnote_*` 中批准的 `ai_public_*` Views。
 
-选题引擎参考高传播内容时，只复用钩子功能、叙事节奏、情绪曲线、视觉语法和互动机制，不复制原文、独特表达或连续镜头结构。
+AI 服务不得拥有旧业务库写权限，不得直接读取手机号、微信号、身份证和领养申请等隐私字段。
 
-### 3. 内容包生成
+## 运行进程
 
-选题通过后，生成公众号、小红书、抖音和视频号所需的完整内容包，包括标题、卡片结构、正文、分镜、旁白、字幕、素材清单和 AI 资产提示词。
+本仓库产生两个进程：
 
-### 4. 审核与反馈
+```text
+bangcat-ai-api       HTTP API，默认 3010
+bangcat-ai-worker    BullMQ Worker，不开放 HTTP
+```
 
-检查事实、隐私、原创性、授权和平台风险；发布后将表现数据关联回选题、模式、猫咪和评分版本。
+二者共享领域逻辑、Prisma Client、任务协议和配置，但可以独立扩容和重启。
 
-## 当前实现
+## 本地启动
 
-当前代码完成了基础数据隔离，并实现 Topic Engine Phase T0：
-
-- 独立 AI SQLite 数据库与顺序迁移；
-- 猫咪公开字段白名单、隐私脱敏和幂等同步；
-- 趋势信号、参考案例、传播模式与案例关联；
-- 猫咪内容机会、选题候选和评分历史；
-- 人工创建、编辑、筛选、评分和状态流转 API；
-- 可解释选题评分、相似度/版权/事实风险硬阻断；
-- 候选编辑后自动清除旧评分，防止过期分数继续生效；
-- 所有 Topic Engine 写操作进入审计日志；
-- API Key 鉴权和操作人标识；
-- 单元测试、HTTP 集成测试与脱敏 fixture。
-
-当前**没有**连接生产数据库、自动采集第三方平台、调用大模型、生成图片/视频或自动发布。
-
-## 快速启动
-
-要求 Node.js 22 或更高版本。
+要求 Node.js 24、MySQL 和 Redis。
 
 ```bash
 cp .env.example .env
-npm test
-npm start
+npm install
+npm run prisma:migrate:dev -- --name init_mysql
+npm run prisma:generate
+npm run dev
 ```
 
-默认服务地址：`http://127.0.0.1:3000`
-
-导入仓库内的假数据：
+另一个终端启动 Worker：
 
 ```bash
-curl -X POST http://127.0.0.1:3000/v1/sync/fixture \
-  -H 'content-type: application/json' \
-  --data-binary @tests/fixtures/source-cats.json
+npm run dev:worker
 ```
 
-生产或共享环境配置 `ADMIN_API_KEY` 后，Topic Engine 与同步写接口需要请求头：
+健康检查：
+
+```bash
+curl http://127.0.0.1:3010/health
+```
+
+内部 API 需要：
 
 ```text
-x-admin-api-key: <ADMIN_API_KEY>
-x-actor-id: <operator-id>
-x-actor-type: user
+x-service-token: <INTERNAL_SERVICE_TOKEN>
+x-tenant-id: bangcat
+x-actor-id: <current-user-id>
+x-actor-type: admin
+x-request-id: <request-id>
 ```
 
-## Topic Engine T0 API
+## Docker
+
+先创建与现有平台共享的内部网络：
+
+```bash
+docker network create catnote-shared-network
+```
+
+然后：
+
+```bash
+docker compose up -d --build
+```
+
+正式环境中，AI API 不应直接暴露给浏览器或小程序。应由现有 `catnoteapi_v2` 代理调用。
+
+## Topic Engine T0
+
+现代化后的 API 保留 T0 主流程：
 
 ```text
 GET|POST  /v1/topic/trends
-GET|PUT   /v1/topic/trends/:id
+PUT       /v1/topic/trends/:id
 GET|POST  /v1/topic/references
-GET|PUT   /v1/topic/references/:id
+PUT       /v1/topic/references/:id
 GET|POST  /v1/topic/patterns
-GET|PUT   /v1/topic/patterns/:id
+PUT       /v1/topic/patterns/:id
 GET|POST  /v1/topic/opportunities
-GET|PUT   /v1/topic/opportunities/:id
+PUT       /v1/topic/opportunities/:id
 GET|POST  /v1/topic/candidates
 GET|PUT   /v1/topic/candidates/:id
 POST      /v1/topic/candidates/:id/score
 POST      /v1/topic/candidates/:id/status
+POST      /v1/jobs/reference-analysis
 ```
 
-候选评分请求中的 12 个信号均使用 `0—1` 数值。评分结果保存总分、逐项贡献、风险扣分、硬阻断原因和评分版本。
+选题领域算法继续保持：
 
-## 验证状态
+- 趋势、猫咪匹配、人类兴趣、新颖度和平台适配正向评分；
+- 相似度、版权、事实和题材疲劳风险扣分；
+- 高相似度、高版权风险和高事实风险硬阻断；
+- 候选必须引用事实、传播模式和可用素材；
+- 候选编辑后清空旧评分；
+- 每次写入与评分记录 tenant、actor 和 request ID。
 
-新增的 T0 持久化与 HTTP 鉴权流程已在 Node.js 22 隔离环境运行 4 个测试，结果为 4 passed、0 failed。当前执行环境无法解析 `github.com`，因此尚未从远端重新克隆并执行完整分支测试；仓库暂未配置 GitHub Actions。
+## 当前边界
 
-## 文档
+已完成：
 
-- [产品需求文档](docs/PRD.md)
-- [选题引擎技术设计](docs/TOPIC_ENGINE.md)
-- [选题引擎实施计划](docs/TOPIC_ENGINE_PLAN.md)
-- [Codex 开发计划](docs/CODEX_PLAN.md)
-- [系统上下文](docs/architecture/SYSTEM_CONTEXT.md)
-- [数据映射与隐私白名单](docs/architecture/DATA_MAPPING.md)
-- [ADR-0001：启动技术栈](docs/architecture/ADR-0001-bootstrap-stack.md)
-- [ADR-0002：选题引擎优先](docs/architecture/ADR-0002-topic-engine-first.md)
+- 生产技术栈脚手架；
+- MySQL Prisma Schema；
+- 旧库只读 View Schema；
+- NestJS/Fastify API；
+- Topic Engine Prisma 纵向切片；
+- BullMQ 队列与 Worker 骨架；
+- COS Storage Adapter；
+- OpenTelemetry 可选接入；
+- Docker Compose 和 CI。
+
+尚未完成：
+
+- 在旧业务库实际创建 `ai_public_*` Views；
+- 在 `catnoteapi_v2` 增加 AI 代理接口；
+- 正式配置 MySQL、Redis、COS 和 OTLP；
+- Topic Engine T1 的模型拆解；
+- 图片和视频生成 Worker；
+- 自动发布。
 
 ## 关键原则
 
-- AI 系统不得拥有生产数据库写权限；
-- 未列入白名单的字段默认排除；
 - 先选题，后写作；
 - 先抽象传播模式，后原创生成；
-- 真实事实、文学改编和虚构故事必须明确区分；
+- 真实事实、改编和虚构必须明确区分；
 - 不保存或复刻第三方完整作品；
-- 每次同步、评分和生成必须可追溯、可重试、可审计；
-- 第一阶段采用自动生成加人工审核，不做自动发布；
-- 爆款是实验结果，不是系统可以承诺的标签。
-
-## 下一步
-
-1. 使用 10 只脱敏测试猫录入真实内容机会；
-2. 人工录入 50—100 个高质量参考案例并抽象 10—20 个传播模式；
-3. 由运营人员连续使用 T0 工作流，验证评分和排序是否有效；
-4. 确认生产库只读视图并实现正式 Connector；
-5. 进入 Phase T1：使用模型辅助拆解案例，但后续生成器只读取抽象模式；
-6. 再进入候选自动生成、内容包生成和表现反馈。
+- 所有模型调用、任务和生成结果可追溯；
+- API 与 Worker 分离，但暂不拆成大量微服务；
+- 生产 Migration 必须显式执行并可回滚。

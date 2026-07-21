@@ -3,10 +3,37 @@
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
     "strict": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
-    "skipLibCheck": true
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "outDir": "dist",
+    "rootDir": ".",
+    "sourceMap": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": [
+    "src/main.ts",
+    "src/worker.ts",
+    "src/telemetry.ts",
+    "src/app.module.ts",
+    "src/common/**/*.ts",
+    "src/config/**/*.ts",
+    "src/domain/topic-engine.ts",
+    "src/health/**/*.ts",
+    "src/infrastructure/**/*.ts",
+    "src/jobs/**/*.ts",
+    "src/topic-engine/**/*.ts",
+    "src/generated/**/*.ts",
+    "tests/**/*.spec.ts",
+    "prisma.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }
