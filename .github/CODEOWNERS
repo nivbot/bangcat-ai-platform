@@ -1,0 +1,11 @@
+# Final human ownership remains with the repository owner.
+* @nivbot
+
+# High-risk boundaries require explicit owner review.
+/prisma/ @nivbot
+/docs/architecture/ @nivbot
+/.github/workflows/ @nivbot
+/src/infrastructure/database/ @nivbot
+/src/common/guards/ @nivbot
+/Dockerfile @nivbot
+/docker-compose.yml @nivbot
