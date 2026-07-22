@@ -9,6 +9,7 @@ import {
 } from '../domain/topic-engine.js';
 import type {
   CatOpportunityDto,
+  CreateCandidateFromCatDto,
   ReferenceContentDto,
   ScoreTopicCandidateDto,
   TopicCandidateDto,
@@ -363,5 +364,148 @@ export class TopicEngineService {
     });
     await this.audit(actor, 'topic.candidate.status_changed', 'topic_candidate', id, { status });
     return updated;
+  }
+
+  /**
+   * MVP topic creation: build a candidate from approved cat facts, the
+   * operator's direction and optional already-approved patterns/trends, then
+   * score it with a heuristic baseline so the review gate stays explainable.
+   */
+  async createCandidateFromCat(actor: ActorContext, dto: CreateCandidateFromCatDto) {
+    const cat = await this.prisma.catAsset.findFirst({
+      where: { id: dto.catAssetId, tenantId: actor.tenantId },
+      include: { media: true },
+    });
+    if (!cat) throw new BadRequestException('cat_not_found');
+    if (!cat.isPublic) throw new BadRequestException('cat_not_public');
+
+    const patternIds = [...new Set(dto.patternIds ?? [])];
+    const trendIds = [...new Set(dto.trendSignalIds ?? [])];
+    const patterns = patternIds.length
+      ? await this.prisma.viralPattern.findMany({
+          where: { tenantId: actor.tenantId, id: { in: patternIds }, status: 'active' },
+        })
+      : [];
+    if (patterns.length !== patternIds.length) {
+      throw new BadRequestException('pattern_not_found_or_not_active');
+    }
+    const trendCount = trendIds.length
+      ? await this.prisma.trendSignal.count({ where: { tenantId: actor.tenantId, id: { in: trendIds } } })
+      : 0;
+    if (trendCount !== trendIds.length) throw new BadRequestException('trend_not_found');
+
+    const facts: string[] = [
+      `名字：${cat.name}`,
+      cat.sex !== 'unknown' ? `性别：${cat.sex}` : null,
+      cat.approximateAgeMonths != null ? `月龄约：${cat.approximateAgeMonths}` : null,
+      cat.breed ? `品种：${cat.breed}` : null,
+      cat.coatColor ? `毛色：${cat.coatColor}` : null,
+      cat.publicDescription ? `描述：${cat.publicDescription}` : null,
+      cat.publicRescueStory ? `救助经历：${cat.publicRescueStory}` : null,
+      cat.publicPersonalityNotes ? `性格：${cat.publicPersonalityNotes}` : null,
+    ].filter((fact): fact is string => fact !== null);
+
+    const direction = dto.direction.trim();
+    const premise = `基于「${cat.name}」的真实公开资料，围绕"${direction}"展开（内容级别：${dto.contentLevel}）。`;
+    const hook = patterns[0]?.hookPattern ?? `用${cat.name}最鲜明的特点制造第一印象。`;
+    const storyBeats =
+      patterns[0] && Array.isArray(patterns[0].narrativeStructure)
+        ? (patterns[0].narrativeStructure as string[])
+        : ['呈现猫咪的基本事实与第一印象', '展开与方向相关的核心情节', '落到关注或领养的自然呼吁'];
+
+    const factSourceIds = [`cat:${cat.sourceId}`, ...cat.media.map((media) => `media:${media.sourceMediaId}`)];
+    const assetRequirements = [
+      cat.media.length > 0 ? `使用已授权素材 ${cat.media.length} 件` : '需要补充已授权图片素材',
+      dto.format === 'carousel' ? '图文卡片 3-5 张' : '公众号头图 1 张',
+    ];
+    const originalityConstraints = [
+      '仅使用猫资产中已批准的公开事实，不虚构健康或领养状态',
+      '不复制任何参考案例的原文措辞',
+      ...(patterns[0] && Array.isArray(patterns[0].prohibitedElements)
+        ? (patterns[0].prohibitedElements as string[])
+        : []),
+    ];
+
+    // Heuristic baseline signals; the operator may re-score afterwards.
+    const completeness = cat.completenessScore / 100;
+    const signals: TopicSignals = {
+      trendRelevance: trendIds.length > 0 ? 0.6 : 0.35,
+      catFit: Math.min(1, 0.45 + completeness * 0.55),
+      humanInterest: Math.min(1, 0.4 + completeness * 0.5 + (cat.publicRescueStory ? 0.2 : 0)),
+      novelty: patterns.length > 0 ? 0.65 : 0.45,
+      platformFit: dto.format === 'carousel' && dto.platform === 'xiaohongshu' ? 0.8 : 0.6,
+      assetFeasibility: cat.media.length > 0 ? 0.85 : 0.3,
+      adoptionOrBrandValue: cat.adoptionStatus === 'available' ? 0.9 : 0.55,
+      timeliness: 0.55,
+      sourceSimilarityRisk: patterns.length > 0 ? 0.15 : 0.08,
+      copyrightRisk: 0.05,
+      factualRisk: dto.contentLevel === 'fictional' ? 0.5 : dto.contentLevel === 'adapted' ? 0.2 : 0.08,
+      audienceFatigueRisk: 0.15,
+    };
+    const score = scoreTopicCandidate(signals);
+
+    const candidateId = randomUUID();
+    const record = await this.prisma.$transaction(async (tx: any) => {
+      const candidate = await tx.topicCandidate.create({
+        data: {
+          id: candidateId,
+          tenantId: actor.tenantId,
+          catAssetId: cat.id,
+          platform: dto.platform,
+          format: dto.format,
+          contentLevel: dto.contentLevel,
+          premise,
+          audienceReason: direction,
+          hook,
+          storyBeats,
+          factSourceIds,
+          assetRequirements,
+          originalityConstraints,
+          signals: asJson(signals),
+          score: asJson(score),
+          totalScore: score.totalScore,
+          scoreDecision: score.decision,
+          scoreVersion: 'topic-score-v1-from-cat',
+          status: score.decision,
+          createdBy: actor.actorId,
+          updatedBy: actor.actorId,
+        },
+      });
+      if (patternIds.length > 0) {
+        await tx.topicCandidatePattern.createMany({
+          data: patternIds.map((viralPatternId) => ({
+            tenantId: actor.tenantId,
+            topicCandidateId: candidateId,
+            viralPatternId,
+          })),
+        });
+      }
+      if (trendIds.length > 0) {
+        await tx.topicCandidateTrend.createMany({
+          data: trendIds.map((trendSignalId) => ({
+            tenantId: actor.tenantId,
+            topicCandidateId: candidateId,
+            trendSignalId,
+          })),
+        });
+      }
+      await tx.topicScoreRun.create({
+        data: {
+          tenantId: actor.tenantId,
+          topicCandidateId: candidateId,
+          signals: asJson(signals),
+          result: asJson(score),
+          scoringVersion: 'topic-score-v1-from-cat',
+          createdBy: actor.actorId,
+        },
+      });
+      return candidate;
+    });
+    await this.audit(actor, 'topic.candidate.created_from_cat', 'topic_candidate', record.id, {
+      catAssetId: cat.id,
+      factsUsed: facts.length,
+      decision: score.decision,
+    });
+    return this.getCandidate(actor, record.id);
   }
 }

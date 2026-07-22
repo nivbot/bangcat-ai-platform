@@ -46,4 +46,11 @@ export default () => ({
     region: process.env.COS_REGION ?? '',
     publicBaseUrl: process.env.COS_PUBLIC_BASE_URL ?? '',
   },
+  providers: {
+    text: process.env.TEXT_PROVIDER ?? 'mock',
+    image: process.env.IMAGE_PROVIDER ?? 'mock',
+    textModel: process.env.TEXT_MODEL ?? 'claude-sonnet-4-6',
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
+    modelTimeoutMs: numberEnv('MODEL_TIMEOUT_MS', 60_000),
+  },
 });

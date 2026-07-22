@@ -111,3 +111,24 @@ export class UpdateTopicStatusDto {
   @IsIn(['draft', 'recommended', 'review', 'rejected', 'blocked', 'selected', 'archived'])
   status!: string;
 }
+
+export class RequestReferenceAnalysisDto {
+  @IsString() referenceContentId!: string;
+}
+
+export class ReviewReferenceAnalysisDto {
+  @IsIn(['approved', 'rejected']) decision!: 'approved' | 'rejected';
+  @IsOptional() @IsString() note?: string;
+}
+
+export class CreateCandidateFromCatDto {
+  @IsString() catAssetId!: string;
+  @IsIn(['xiaohongshu', 'douyin', 'wechat_official', 'wechat_channels', 'bilibili'])
+  platform!: 'xiaohongshu' | 'douyin' | 'wechat_official' | 'wechat_channels' | 'bilibili';
+  @IsIn(['carousel', 'article']) format!: 'carousel' | 'article';
+  @IsIn(['factual', 'adapted', 'fictional']) contentLevel!: 'factual' | 'adapted' | 'fictional';
+  /** Operator direction: angle, audience, tone. */
+  @IsString() direction!: string;
+  @IsOptional() @IsArray() patternIds?: string[];
+  @IsOptional() @IsArray() trendSignalIds?: string[];
+}

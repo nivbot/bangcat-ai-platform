@@ -7,6 +7,7 @@ import { HealthController } from './health/health.controller.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { QueueInfrastructureModule } from './infrastructure/queue/queue.module.js';
 import { StorageModule } from './infrastructure/storage/storage.module.js';
+import { ProvidersModule } from './infrastructure/providers/providers.module.js';
 import { TopicEngineModule } from './topic-engine/topic-engine.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { CatsModule } from './source/cats.module.js';
@@ -17,6 +18,7 @@ import { CatsModule } from './source/cats.module.js';
     DatabaseModule,
     QueueInfrastructureModule,
     StorageModule,
+    ProvidersModule,
     TopicEngineModule,
     JobsModule,
     CatsModule,

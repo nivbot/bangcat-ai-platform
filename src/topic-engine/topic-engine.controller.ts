@@ -2,7 +2,10 @@ import { Body, Controller, Get, Headers, Param, Post, Put, Query } from '@nestjs
 import { ConfigService } from '@nestjs/config';
 import {
   CatOpportunityDto,
+  CreateCandidateFromCatDto,
   ReferenceContentDto,
+  RequestReferenceAnalysisDto,
+  ReviewReferenceAnalysisDto,
   ScoreTopicCandidateDto,
   TopicCandidateDto,
   TrendSignalDto,
@@ -10,11 +13,15 @@ import {
   ViralPatternDto,
 } from './dto/topic-engine.dto.js';
 import { TopicEngineService, type ActorContext } from './topic-engine.service.js';
+import { ReferenceAnalysisService } from './reference-analysis.service.js';
+import { JobDispatchService } from '../jobs/job-dispatch.service.js';
 
 @Controller('topic')
 export class TopicEngineController {
   constructor(
     private readonly service: TopicEngineService,
+    private readonly analyses: ReferenceAnalysisService,
+    private readonly jobs: JobDispatchService,
     private readonly config: ConfigService,
   ) {}
 
@@ -127,5 +134,41 @@ export class TopicEngineController {
     @Body() dto: UpdateTopicStatusDto,
   ) {
     return this.service.updateCandidateStatus(this.actor(headers), id, dto.status);
+  }
+
+  @Post('candidates/from-cat')
+  createCandidateFromCat(@Headers() headers: Record<string, string>, @Body() dto: CreateCandidateFromCatDto) {
+    return this.service.createCandidateFromCat(this.actor(headers), dto);
+  }
+
+  @Get('reference-analyses')
+  listAnalyses(
+    @Headers() headers: Record<string, string>,
+    @Query('referenceContentId') referenceContentId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.analyses.list(this.actor(headers), referenceContentId, status);
+  }
+
+  @Get('reference-analyses/:id')
+  getAnalysis(@Headers() headers: Record<string, string>, @Param('id') id: string) {
+    return this.analyses.get(this.actor(headers), id);
+  }
+
+  @Post('reference-analyses')
+  async requestAnalysis(@Headers() headers: Record<string, string>, @Body() dto: RequestReferenceAnalysisDto) {
+    const actor = this.actor(headers);
+    const analysis = await this.analyses.requestAnalysis(actor, dto.referenceContentId);
+    const job = await this.jobs.enqueueReferenceAnalysis({
+      tenantId: actor.tenantId,
+      analysisId: analysis.id,
+      requestedBy: actor.actorId,
+    });
+    return { analysisId: analysis.id, status: 'queued', queueJobId: job.id };
+  }
+
+  @Post('reference-analyses/:id/review')
+  reviewAnalysis(@Headers() headers: Record<string, string>, @Param('id') id: string, @Body() dto: ReviewReferenceAnalysisDto) {
+    return this.analyses.review(this.actor(headers), id, dto.decision, dto.note);
   }
 }
