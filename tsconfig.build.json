@@ -13,10 +13,11 @@
     "src/app.module.ts",
     "src/common/**/*.ts",
     "src/config/**/*.ts",
-    "src/domain/topic-engine.ts",
+    "src/domain/**/*.ts",
     "src/health/**/*.ts",
     "src/infrastructure/**/*.ts",
     "src/jobs/**/*.ts",
+    "src/source/**/*.ts",
     "src/topic-engine/**/*.ts",
     "src/generated/**/*.ts"
   ],

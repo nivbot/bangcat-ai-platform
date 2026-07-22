@@ -19,6 +19,7 @@
     "prisma:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:migration": "vitest run --config vitest.config.migration.ts",
     "typecheck": "npm run prisma:generate && tsc -p tsconfig.json --noEmit",
     "policy:check": "node scripts/check-repository-policy.mjs",
     "check": "npm run policy:check && npm run typecheck && npm test && npm run build"

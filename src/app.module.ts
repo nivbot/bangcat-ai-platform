@@ -9,6 +9,7 @@ import { QueueInfrastructureModule } from './infrastructure/queue/queue.module.j
 import { StorageModule } from './infrastructure/storage/storage.module.js';
 import { TopicEngineModule } from './topic-engine/topic-engine.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
+import { CatsModule } from './source/cats.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { JobsModule } from './jobs/jobs.module.js';
     StorageModule,
     TopicEngineModule,
     JobsModule,
+    CatsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: InternalServiceGuard }],

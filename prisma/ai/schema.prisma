@@ -65,6 +65,7 @@ model CatAsset {
   media                  CatMediaAsset[]
   opportunities          CatContentOpportunity[]
   topicCandidates        TopicCandidate[]
+  generationJobs         GenerationJob[]
 
   @@unique([tenantId, sourceId])
   @@index([tenantId, adoptionStatus])
@@ -132,10 +133,142 @@ model ReferenceContent {
   createdAt      DateTime            @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt      DateTime            @updatedAt @map("updated_at") @db.DateTime(3)
   patternLinks   PatternSourceLink[]
+  analyses       ReferenceAnalysis[]
 
   @@unique([tenantId, platform, urlHash])
   @@index([tenantId, platform, status])
   @@map("reference_contents")
+}
+
+// Versioned structural analysis of an approved reference case. The analysis
+// stores abstract patterns only; the full third-party source text never
+// leaves this record and must not enter downstream generation context.
+model ReferenceAnalysis {
+  id                 String           @id @default(uuid()) @db.VarChar(36)
+  tenantId           String           @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  referenceContentId String           @map("reference_content_id") @db.VarChar(36)
+  schemaVersion      String           @map("schema_version") @db.VarChar(64)
+  promptVersion      String           @map("prompt_version") @db.VarChar(64)
+  provider           String           @db.VarChar(64)
+  model              String           @db.VarChar(128)
+  status             String           @default("queued") @db.VarChar(32)
+  analysis           Json?            @map("analysis_json")
+  validationIssues   Json?            @map("validation_issues_json")
+  errorCode          String?          @map("error_code") @db.VarChar(64)
+  errorMessage       String?          @map("error_message") @db.Text
+  startedAt          DateTime?        @map("started_at") @db.DateTime(3)
+  finishedAt         DateTime?        @map("finished_at") @db.DateTime(3)
+  durationMs         Int?             @map("duration_ms")
+  tokenUsage         Json?            @map("token_usage_json")
+  estimatedCostCny   Decimal?         @map("estimated_cost_cny") @db.Decimal(10, 6)
+  reviewedBy         String?          @map("reviewed_by") @db.VarChar(128)
+  reviewedAt         DateTime?        @map("reviewed_at") @db.DateTime(3)
+  reviewNote         String?          @map("review_note") @db.Text
+  createdBy          String?          @map("created_by") @db.VarChar(128)
+  updatedBy          String?          @map("updated_by") @db.VarChar(128)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.DateTime(3)
+  referenceContent   ReferenceContent @relation(fields: [referenceContentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, referenceContentId, createdAt], map: "reference_analyses_tenant_ref_created_idx")
+  @@index([tenantId, status])
+  @@map("reference_analyses")
+}
+
+// Versioned image-text generation job. API handlers only create the queued
+// record and enqueue work; the BullMQ worker performs the model calls.
+model GenerationJob {
+  id               String           @id @default(uuid()) @db.VarChar(36)
+  tenantId         String           @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  topicCandidateId String           @map("topic_candidate_id") @db.VarChar(36)
+  catAssetId       String           @map("cat_asset_id") @db.VarChar(36)
+  jobVersion       Int              @default(1) @map("job_version")
+  parentJobId      String?          @map("parent_job_id") @db.VarChar(36)
+  status           String           @default("queued") @db.VarChar(32)
+  operatorNote     String?          @map("operator_note") @db.Text
+  promptVersion    String?          @map("prompt_version") @db.VarChar(64)
+  errorCode        String?          @map("error_code") @db.VarChar(64)
+  errorMessage     String?          @map("error_message") @db.Text
+  queuedAt         DateTime         @default(now()) @map("queued_at") @db.DateTime(3)
+  startedAt        DateTime?        @map("started_at") @db.DateTime(3)
+  finishedAt       DateTime?        @map("finished_at") @db.DateTime(3)
+  createdBy        String?          @map("created_by") @db.VarChar(128)
+  updatedBy        String?          @map("updated_by") @db.VarChar(128)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.DateTime(3)
+  topicCandidate   TopicCandidate   @relation(fields: [topicCandidateId], references: [id])
+  catAsset         CatAsset         @relation(fields: [catAssetId], references: [id])
+  parentJob        GenerationJob?   @relation("generation_regeneration", fields: [parentJobId], references: [id])
+  childJobs        GenerationJob[]  @relation("generation_regeneration")
+  contentPackage   ContentPackage?
+  modelCalls       GenerationModelCall[]
+  reviews          ContentReview[]
+
+  @@unique([tenantId, topicCandidateId, jobVersion])
+  @@index([tenantId, status, queuedAt])
+  @@index([tenantId, catAssetId])
+  @@map("generation_jobs")
+}
+
+model ContentPackage {
+  id                 String         @id @default(uuid()) @db.VarChar(36)
+  tenantId           String         @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  generationJobId    String         @unique @map("generation_job_id") @db.VarChar(36)
+  schemaVersion      String         @map("schema_version") @db.VarChar(64)
+  titleOptions       Json           @map("title_options_json")
+  body               String         @db.Text
+  shortCaption       String         @map("short_caption") @db.Text
+  factReferences     Json           @map("fact_references_json")
+  imageConcept       String         @map("image_concept") @db.Text
+  imagePrompt        String         @map("image_prompt") @db.Text
+  imageStatus        String         @map("image_status") @db.VarChar(32)
+  imageAssetKey      String?        @map("image_asset_key") @db.VarChar(512)
+  imageAssetUrl      String?        @map("image_asset_url") @db.Text
+  riskNotes          Json           @map("risk_notes_json")
+  validationIssues   Json?          @map("validation_issues_json")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.DateTime(3)
+  generationJob      GenerationJob  @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, generationJobId])
+  @@map("content_packages")
+}
+
+model GenerationModelCall {
+  id               String        @id @default(uuid()) @db.VarChar(36)
+  tenantId         String        @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  generationJobId  String        @map("generation_job_id") @db.VarChar(36)
+  callKind         String        @map("call_kind") @db.VarChar(32)
+  provider         String        @db.VarChar(64)
+  model            String        @db.VarChar(128)
+  promptVersion    String        @map("prompt_version") @db.VarChar(64)
+  status           String        @db.VarChar(32)
+  tokenUsage       Json?         @map("token_usage_json")
+  estimatedCostCny Decimal?      @map("estimated_cost_cny") @db.Decimal(10, 6)
+  durationMs       Int?          @map("duration_ms")
+  errorCode        String?       @map("error_code") @db.VarChar(64)
+  errorMessage     String?       @map("error_message") @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  generationJob    GenerationJob @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, generationJobId, createdAt], map: "generation_model_calls_tenant_job_created_idx")
+  @@map("generation_model_calls")
+}
+
+model ContentReview {
+  id              String        @id @default(uuid()) @db.VarChar(36)
+  tenantId        String        @default("bangcat") @map("tenant_id") @db.VarChar(64)
+  generationJobId String        @map("generation_job_id") @db.VarChar(36)
+  decision        String        @db.VarChar(32)
+  note            String?       @db.Text
+  actorId         String?       @map("actor_id") @db.VarChar(128)
+  actorType       String        @map("actor_type") @db.VarChar(64)
+  requestId       String?       @map("request_id") @db.VarChar(128)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  generationJob   GenerationJob @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, generationJobId, createdAt])
+  @@map("content_reviews")
 }
 
 model ViralPattern {
@@ -223,6 +356,7 @@ model TopicCandidate {
   trendLinks             TopicCandidateTrend[]
   patternLinks           TopicCandidatePattern[]
   scoreRuns              TopicScoreRun[]
+  generationJobs         GenerationJob[]
 
   @@index([tenantId, status, totalScore])
   @@index([tenantId, catAssetId])

@@ -2,7 +2,7 @@
 
 - 最后更新：2026-07-22
 - 主干：`main`
-- 当前阶段：生产架构与项目操作系统完成，准备进入旧平台安全接入
+- 当前阶段：Issue #10 图文 MVP 进行中（分支 `feat/10-topic-image-text-mvp`），Phase A 基础链路已完成
 - 项目负责人：产品与架构总负责人（与用户共同决策）
 
 ## 已完成
@@ -47,20 +47,21 @@
 
 ## 当前未完成
 
-### P0：旧平台安全接入 M2
+### P0：旧平台安全接入 M2（Issue #10 Phase A 已完成）
 
-- 在旧平台建立 `ai_public_cats`、`ai_public_cat_events`、`ai_public_media`、`ai_public_stations`；
-- 创建 `bangcat_ai_source_reader` SELECT-only 账号；
-- 在 `catnoteapi_v2` 建立内部 AI 代理；
-- 传递 actor、tenant 和 request ID；
-- 验证 AI 账号无法写入 `catnote_prod`。
+- [x] 定义 `ai_public_cats` 等来源对象契约并落库（本地为 fixture 表，生产为 Views，见 `db/source/ai_public_views_and_reader.sql`）；
+- [x] 创建 `bangcat_ai_source_reader` SELECT-only 账号，已负向验证无法 INSERT；
+- [x] 来源 Connector 服务 + 隐私白名单 sanitize 管线；
+- [x] 内部 API：`GET /v1/cats/source`、`GET /v1/cats/source/:sourceId`、`POST /v1/cats/source/:sourceId/import`、`GET /v1/cats`；
+- [ ] 在 `catnoteapi_v2` 建立内部 AI 代理（MVP 阶段用内部令牌直连代替）；
+- [x] 验证 AI 账号无法写入 `catnote_prod`（SELECT-only 授权 + 负向测试）。
 
-### P0：第一份 MySQL Migration
+### P0：第一份 MySQL Migration（Issue #10 Phase A 已完成）
 
-- 从 Prisma Schema 生成 Migration；
-- 审查 SQL；
-- 在空库和 `catnote_ai_test` 升级场景验证；
-- 建立备份、回滚和数据校验流程。
+- [x] 从 Prisma Schema 生成初始 Migration（含 MVP 五张新表：reference_analyses、generation_jobs、content_packages、generation_model_calls、content_reviews）；
+- [x] 空库与升级路径集成测试（`tests/migration/`，12 个用例全绿）；
+- [x] CI 迁移门禁恢复（deploy + drift 检测 + 集成测试）；
+- [x] 运行手册：`docs/architecture/AI_DATABASE_MIGRATION_RUNBOOK.md`。
 
 ### P0：依赖与供应链安全
 
