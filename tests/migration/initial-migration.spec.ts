@@ -34,13 +34,12 @@ describe('initial MySQL migration: empty database', () => {
   it('creates all 14 tables with utf8mb4 charset and tenant columns', async () => {
     prisma = prismaFor(db);
     // MySQL 8.4 exposes information_schema identifiers in the server's
-    // upper-case form; normalize so the assertions hold on MySQL and MariaDB.
-    const tables = (
-      await prisma.$queryRawUnsafe<Array<{ table_name: string; table_collation: string }>>(
-        `SELECT LOWER(table_name) AS table_name, table_collation FROM information_schema.tables
-         WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`,
-      )
-    ).map((row) => ({ ...row, table_collation: row.table_collation.toLowerCase() }));
+    // upper-case form; normalize in SQL so assertions hold on MySQL and MariaDB.
+    const tables = await prisma.$queryRawUnsafe<Array<{ table_name: string; table_collation: string }>>(
+      `SELECT LOWER(table_name) AS table_name, LOWER(table_collation) AS table_collation
+       FROM information_schema.tables
+       WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`,
+    );
     const names = tables.map((row) => row.table_name).sort();
     expect(names).toEqual(
       [
