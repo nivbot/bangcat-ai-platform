@@ -255,8 +255,9 @@ export function uuid(): string {
 
 /** Returns the list of user tables (excluding _prisma_migrations) in a database. */
 export async function listTables(prisma: PrismaClient): Promise<string[]> {
+  // LOWER(): MySQL 8.4 reports information_schema names in upper case.
   const rows = await prisma.$queryRawUnsafe<Array<{ table_name: string }>>(
-    `SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name`,
+    `SELECT LOWER(table_name) AS table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name`,
   );
   return rows.map((row) => row.table_name).filter((name) => name !== '_prisma_migrations');
 }

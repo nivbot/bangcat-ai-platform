@@ -33,13 +33,14 @@ describe('initial MySQL migration: empty database', () => {
 
   it('creates all 14 tables with utf8mb4 charset and tenant columns', async () => {
     prisma = prismaFor(db);
-    const tables = await prisma.$queryRawUnsafe<
-      Array<{ table_name: string; table_collation: string }>
-    >(
-      `SELECT table_name, table_collation FROM information_schema.tables
-       WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-       ORDER BY table_name`,
-    );
+    // MySQL 8.4 exposes information_schema identifiers in the server's
+    // upper-case form; normalize so the assertions hold on MySQL and MariaDB.
+    const tables = (
+      await prisma.$queryRawUnsafe<Array<{ table_name: string; table_collation: string }>>(
+        `SELECT LOWER(table_name) AS table_name, table_collation FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`,
+      )
+    ).map((row) => ({ ...row, table_collation: row.table_collation.toLowerCase() }));
     const names = tables.map((row) => row.table_name).sort();
     expect(names).toEqual(
       [
@@ -66,7 +67,7 @@ describe('initial MySQL migration: empty database', () => {
 
     const tenantColumns = await prisma.$queryRawUnsafe<Array<{ table_name: string }>>(
       `SELECT table_name FROM information_schema.columns
-       WHERE table_schema = DATABASE() AND column_name = 'tenant_id'`,
+       WHERE table_schema = DATABASE() AND LOWER(column_name) = 'tenant_id'`,
     );
     expect(tenantColumns).toHaveLength(14);
   });
@@ -75,11 +76,11 @@ describe('initial MySQL migration: empty database', () => {
     const uniqueIndexes = await prisma.$queryRawUnsafe<
       Array<{ table_name: string; index_name: string; columns: string }>
     >(
-      `SELECT table_name, index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns
+      `SELECT LOWER(table_name) AS table_name, index_name,
+              GROUP_CONCAT(LOWER(column_name) ORDER BY seq_in_index) AS \`columns\`
        FROM information_schema.statistics
        WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name != 'PRIMARY'
-       GROUP BY table_name, index_name
-       ORDER BY table_name`,
+       GROUP BY table_name, index_name`,
     );
     const uniqueMap = Object.fromEntries(
       uniqueIndexes.map((row) => [row.table_name, row.columns]),
@@ -94,7 +95,7 @@ describe('initial MySQL migration: empty database', () => {
     >(
       `SELECT DISTINCT s.table_name, s.index_name
        FROM information_schema.statistics s
-       WHERE s.table_schema = DATABASE() AND s.seq_in_index = 1 AND s.column_name = 'tenant_id'`,
+       WHERE s.table_schema = DATABASE() AND s.seq_in_index = 1 AND LOWER(s.column_name) = 'tenant_id'`,
     );
     // Every secondary index is tenant-scoped by design.
     expect(tenantFirstIndexes.length).toBeGreaterThanOrEqual(11);
