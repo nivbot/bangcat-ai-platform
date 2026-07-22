@@ -57,10 +57,11 @@
 
 ### P0：第一份 MySQL Migration
 
-- 从 Prisma Schema 生成 Migration；
-- 审查 SQL；
-- 在空库和 `catnote_ai_test` 升级场景验证；
-- 建立备份、回滚和数据校验流程。
+- [x] 从 Prisma Schema 生成 Migration；
+- [x] 审查 SQL（表名、类型、JSON、索引、唯一约束、租户列、时间精度、utf8mb4）；
+- [x] 在空库和 `catnote_ai_test` 升级场景验证（`tests/migration`，12 项集成测试）；
+- [x] 建立备份、回滚和数据校验流程（[AI_DATABASE_MIGRATION_RUNBOOK](../architecture/AI_DATABASE_MIGRATION_RUNBOOK.md)）；
+- [x] CI 增加 migration-safety 验证（scratch MySQL 8.4 deploy + 漂移检测 + 集成测试）。
 
 ### P0：依赖与供应链安全
 
